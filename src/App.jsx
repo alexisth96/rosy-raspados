@@ -1958,9 +1958,9 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = []
         lineas.push([p.numero||"", p.cliente||"", p.cajero||"", p.metodoPago, p.esCortes?"Cortesía":p.total, p.propina||0, fmtTime(p.fecha), items]);
       });
       // Generar CSV
-      const csv = lineas.map(r => r.map(c => `"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("
-");
-      const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8;"});
+      const esc = (v) => { const s = String(v == null ? "" : v); return '"' + s.replace(/"/g, '""') + '"'; };
+      const csv = lineas.map(r => r.map(esc).join(",")).join("\n");
+      const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8;"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = nombreArchivo; a.click();
