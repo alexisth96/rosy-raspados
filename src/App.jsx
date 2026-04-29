@@ -36,7 +36,12 @@ const CUCHARON_AGUA      = 10;
 const METODOS_PAGO       = ["Efectivo","Transferencia","Terminal","Cortesía"];
 const COMISION_TERMINAL  = 0.035;
 const IVA_COMISION       = 0.16;
-const CAJEROS_DEFAULT    = ["Rosy","Ana","Luis","Carlos"];
+const CAJEROS_DEFAULT    = [
+  { nombre:"Rosy",    pin:"1111" },
+  { nombre:"Ana",     pin:"2222" },
+  { nombre:"Luis",    pin:"3333" },
+  { nombre:"Carlos",  pin:"4444" },
+];
 const PRECIOS_LIBRES_DEFAULT = [10, 15, 20, 25, 30];
 const VENTAS_LIBRES_DEFAULT = [
   { id:"libre_default", nombre:"Venta libre", emoji:"✏️" },
@@ -97,11 +102,23 @@ function calcPorciones(items) {
   });
   return map;
 }
+const TOPPINGS_DEFAULT = [
+  { id:"chamoy", nombre:"Chamoy", emoji:"🌶️" },
+  { id:"tajin",  nombre:"Tajín",  emoji:"🧂" },
+  { id:"crema",  nombre:"Crema",  emoji:"🥛" },
+];
+// Fallback para código que use TOPPING_ICONS
 const TOPPING_ICONS = { chamoy: "🌶️", tajin: "🧂", crema: "🥛" };
-function toppingsLabel(t) {
+function toppingsLabel(t, config = null, mode = "emoji") {
   if (!t) return "";
-  const arr = Object.entries(t).filter(([_,v])=>v).map(([k])=>TOPPING_ICONS[k]);
-  return arr.length ? arr.join(" ") : "";
+  const cfg = config || TOPPINGS_DEFAULT;
+  const activos = Object.entries(t).filter(([_,v])=>v).map(([k]) => {
+    const found = cfg.find(c => c.id === k);
+    return found || { id:k, nombre:k, emoji: TOPPING_ICONS[k]||"•" };
+  });
+  if (activos.length === 0) return "";
+  if (mode === "full") return activos.map(c => `${c.emoji} ${c.nombre}`).join(" · ");
+  return activos.map(c => c.emoji).join(" ");
 }
 
 function comisionTerminal(monto) {
@@ -209,9 +226,11 @@ export default function App() {
   const [preciosLibres, setPreciosLibres] = useState(() => load("rr_precios_libres", PRECIOS_LIBRES_DEFAULT));
   const [ventasLibres, setVentasLibres]  = useState(() => load("rr_ventas_libres_tipos", VENTAS_LIBRES_DEFAULT));
   const [pinJefe, setPinJefe]           = useState(() => load("rr_pin_jefe", PIN_DEFAULT));
+  const [toppingsConfig, setToppingsConfig] = useState(() => load("rr_toppings", TOPPINGS_DEFAULT));
   const [gastosCaja, setGastosCaja]     = useState(() => load("rr_gastos_caja", []));
   const [cierresSemana, setCierresSemana] = useState(() => load("rr_cierres_semana", []));
   const [tab, setTab] = useState("pos");
+  const [subTab, setSubTab] = useState("pedido"); // "pedido" o "cola" — solo en vertical
   const [savedToast, setSavedToast]     = useState(""); // mensaje de "guardado"
   const [pinModal, setPinModal]         = useState(null); // {action, label, onSuccess}
   const btn = useBtn();
@@ -228,6 +247,7 @@ export default function App() {
   useEffect(() => save("rr_precios_libres", preciosLibres), [preciosLibres]);
   useEffect(() => save("rr_ventas_libres_tipos", ventasLibres), [ventasLibres]);
   useEffect(() => save("rr_pin_jefe", pinJefe), [pinJefe]);
+  useEffect(() => save("rr_toppings", toppingsConfig), [toppingsConfig]);
   useEffect(() => save("rr_gastos_caja", gastosCaja), [gastosCaja]);
   useEffect(() => save("rr_cierres_semana", cierresSemana), [cierresSemana]);
 
@@ -285,6 +305,30 @@ export default function App() {
           .split-pos { display: block; }
           .split-pos .right-col { display: none; }
         }
+        .btn-toggle-cola {
+          display: none;
+        }
+        @media (max-width: 899px) {
+          .btn-toggle-cola {
+            display: flex;
+            position: fixed;
+            bottom: 24px;
+            right: 20px;
+            z-index: 90;
+            align-items: center;
+            gap: 8px;
+            background: ${ORANGE};
+            color: white;
+            border-radius: 30px;
+            padding: 14px 20px;
+            font-weight: 900;
+            font-size: 14px;
+            letter-spacing: .04em;
+            box-shadow: 0 6px 24px rgba(0,0,0,.35);
+            border: none;
+            cursor: pointer;
+          }
+        }
       `}</style>
 
       <Header
@@ -306,14 +350,28 @@ export default function App() {
 
       <div>
         {tab === "pos" && (
-          <div className="split-pos">
-            <div className="left-col">
-              <POSTab productos={productos} preciosLibres={preciosLibres} ventasLibres={ventasLibres} agregarPedido={agregarPedido} cajeroActivo={cajeroActivo} btn={btn} numeroPedido={numeroPedido} pedidos={pedidos} requirePin={requirePin} showSaved={showSaved}/>
+          <>
+            <div className="split-pos">
+              <div className="left-col" style={{display: subTab === "cola" ? "none" : "block"}}>
+                <POSTab productos={productos} preciosLibres={preciosLibres} ventasLibres={ventasLibres} toppingsConfig={toppingsConfig} agregarPedido={agregarPedido} cajeroActivo={cajeroActivo} btn={btn} numeroPedido={numeroPedido} pedidos={pedidos} requirePin={requirePin} showSaved={showSaved}/>
+              </div>
+              {subTab === "cola" && (
+                <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px",display:"block"}} className="cream-section">
+                  <ColaTab enCola={enCola} actualizarPedido={actualizarPedido} btn={btn} variant="light" requirePin={requirePin} showSaved={showSaved} productos={productos}/>
+                </div>
+              )}
+              <div className="right-col cream-section">
+                <ColaTab enCola={enCola} actualizarPedido={actualizarPedido} btn={btn} variant="light" requirePin={requirePin} showSaved={showSaved} productos={productos}/>
+              </div>
             </div>
-            <div className="right-col cream-section">
-              <ColaTab enCola={enCola} actualizarPedido={actualizarPedido} btn={btn} variant="light" requirePin={requirePin} showSaved={showSaved} productos={productos}/>
-            </div>
-          </div>
+            {/* Botón flotante visible solo en vertical */}
+            <button className="btn btn-toggle-cola" onClick={() => { btn(); setSubTab(s => s === "pedido" ? "cola" : "pedido"); }}>
+              {subTab === "pedido"
+                ? <><span style={{fontSize:18}}>🍧</span> Cola ({enCola.length})</>
+                : <><span style={{fontSize:18}}>+</span> Nuevo pedido</>
+              }
+            </button>
+          </>
         )}
         {tab === "cola" && (
           <div style={{background:CREMA, color:TEXT_DARK, minHeight:"calc(100vh - 90px)", padding:"20px"}} className="cream-section">
@@ -324,7 +382,7 @@ export default function App() {
         {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn}/></div>}
         {tab === "gastos"   && <div style={{padding:"20px"}}><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
         {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved}/></div>}
-        {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
+        {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
       </div>
     </div>
   );
@@ -387,6 +445,23 @@ function Header({ cajeroActivo, onChangeUser, tab, setTab, enColaCount }) {
 
 // ─── PANTALLA: SELECCIÓN DE CAJERO ────────────────────────────────────────────
 function CajeroScreen({ cajeros, onSelect }) {
+  const [seleccionado, setSeleccionado] = useState(null);
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  const cajeroObj = seleccionado !== null ? cajeros[seleccionado] : null;
+  const nombre = cajeroObj?.nombre || cajeroObj || "";
+  const pinRequerido = cajeroObj?.pin || null;
+
+  const intentarEntrar = () => {
+    if (pinRequerido && pin !== pinRequerido) {
+      setError("PIN incorrecto"); setPin("");
+      setTimeout(() => setError(""), 1500);
+      return;
+    }
+    onSelect(nombre);
+  };
+
   return (
     <div style={{fontFamily:"'Inter',sans-serif",background:COBALT,minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,color:"white"}}>
       <style>{CSS}</style>
@@ -397,19 +472,53 @@ function CajeroScreen({ cajeros, onSelect }) {
         <WordmarkSVG style={{width:"100%",height:"auto"}}/>
       </div>
       <div className="serif-it" style={{fontSize:18,color:"rgba(255,255,255,.65)",marginBottom:36}}>¿Quién está de cajero hoy?</div>
-      <div style={{width:"100%",maxWidth:380,display:"flex",flexDirection:"column",gap:10}}>
-        {cajeros.map(c => {
-          const initial = c.charAt(0).toUpperCase();
-          return (
-            <button key={c} className="btn" onClick={() => onSelect(c)}
-              style={{width:"100%",background:"rgba(255,255,255,.08)",color:"white",borderRadius:14,padding:"14px 18px",fontSize:18,fontWeight:800,border:"2px solid rgba(255,255,255,.18)",textAlign:"left",display:"flex",alignItems:"center",gap:14}}>
-              <span style={{width:42,height:42,background:"rgba(255,255,255,.12)",border:"2px solid rgba(255,255,255,.25)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Archivo Black',sans-serif",fontSize:18,color:"white"}}>{initial}</span>
-              <span className="display" style={{fontSize:18,letterSpacing:".02em"}}>{c.toUpperCase()}</span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="serif-it" style={{marginTop:20,fontSize:15,color:"rgba(255,255,255,.4)"}}>Edita los cajeros en ⚙️ Configuración</div>
+
+      {seleccionado === null ? (
+        <div style={{width:"100%",maxWidth:380,display:"flex",flexDirection:"column",gap:10}}>
+          {cajeros.map((c, i) => {
+            const nom = c?.nombre || c;
+            return (
+              <button key={i} className="btn" onClick={() => { setSeleccionado(i); setPin(""); setError(""); }}
+                style={{width:"100%",background:"rgba(255,255,255,.08)",color:"white",borderRadius:14,padding:"14px 18px",fontWeight:800,border:"2px solid rgba(255,255,255,.18)",textAlign:"left",display:"flex",alignItems:"center",gap:14}}>
+                <span style={{width:42,height:42,background:"rgba(255,255,255,.12)",border:"2px solid rgba(255,255,255,.25)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Archivo Black',sans-serif",fontSize:18,color:"white"}}>{nom.charAt(0).toUpperCase()}</span>
+                <span className="display" style={{fontSize:18,letterSpacing:".02em"}}>{nom.toUpperCase()}</span>
+              </button>
+            );
+          })}
+          <div className="serif-it" style={{marginTop:10,fontSize:14,color:"rgba(255,255,255,.4)",textAlign:"center"}}>Edita los cajeros en ⚙️ Configuración</div>
+        </div>
+      ) : (
+        <div style={{width:"100%",maxWidth:380}}>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{width:64,height:64,background:ORANGE,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Archivo Black',sans-serif",fontSize:28,color:"white",margin:"0 auto 10px"}}>
+              {nombre.charAt(0).toUpperCase()}
+            </div>
+            <div className="display" style={{fontSize:24,color:"white"}}>{nombre.toUpperCase()}</div>
+            {pinRequerido
+              ? <div className="serif-it" style={{fontSize:15,color:"rgba(255,255,255,.6)",marginTop:4}}>Ingresa tu PIN</div>
+              : <div className="serif-it" style={{fontSize:15,color:"rgba(255,255,255,.6)",marginTop:4}}>Sin PIN configurado</div>
+            }
+          </div>
+          {pinRequerido && (
+            <>
+              <input className="input" type="password" inputMode="numeric" placeholder="••••" value={pin} maxLength={4}
+                onChange={e=>setPin(e.target.value.slice(0,4))}
+                onKeyDown={e=>{if(e.key==="Enter")intentarEntrar();}}
+                style={{textAlign:"center",fontSize:32,letterSpacing:".4em",fontFamily:"'Archivo Black',sans-serif",marginBottom:10}}
+                autoFocus/>
+              {error && <div className="serif-it" style={{fontSize:14,color:ORANGE,textAlign:"center",marginBottom:10}}>{error}</div>}
+            </>
+          )}
+          <button className="btn" onClick={intentarEntrar}
+            style={{width:"100%",background:ORANGE,color:"white",borderRadius:14,padding:16,fontSize:16,fontWeight:900,letterSpacing:".04em",textTransform:"uppercase",marginBottom:10}}>
+            Entrar →
+          </button>
+          <button className="btn" onClick={() => { setSeleccionado(null); setPin(""); setError(""); }}
+            style={{width:"100%",background:"none",color:"rgba(255,255,255,.5)",fontSize:13,padding:8,fontFamily:"'Instrument Serif',serif",fontStyle:"italic"}}>
+            ← Elegir otro cajero
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -463,7 +572,7 @@ function FondoCajaScreen({ cajero, onConfirm, onChangeUser }) {
 }
 
 // ─── POS TAB ──────────────────────────────────────────────────────────────────
-function POSTab({ productos, preciosLibres, ventasLibres, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos = [], requirePin, showSaved }) {
+function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig = TOPPINGS_DEFAULT, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos = [], requirePin, showSaved }) {
   const [items, setItems] = useState(() => load("rr_items_temp", []));
   const [editIdx, setEditIdx] = useState(null);
   const [showVentaLibre, setShowVentaLibre] = useState(false);
@@ -589,12 +698,12 @@ function POSTab({ productos, preciosLibres, ventasLibres, agregarPedido, cajeroA
         )}
 
         {editIdx !== null && editIdx?.kind !== "new-prod" && typeof editIdx === "number" && items[editIdx]?.tipo !== "especial" && (
-          <ItemEditor productos={productos} item={items[editIdx]} topSabores={topSabores}
+          <ItemEditor productos={productos} item={items[editIdx]} topSabores={topSabores} toppingsConfig={toppingsConfig}
             onSave={it => { btn("success"); setItems(items.map((x,i) => i === editIdx ? it : x)); setEditIdx(null); }}
             onClose={() => { btn(); setEditIdx(null); }} btn={btn}/>
         )}
         {editIdx !== null && editIdx?.kind === "new-prod" && (
-          <ItemEditor productos={productos} initialProd={editIdx.prod} topSabores={topSabores}
+          <ItemEditor productos={productos} initialProd={editIdx.prod} topSabores={topSabores} toppingsConfig={toppingsConfig}
             onSave={it => { btn("success"); setItems([...items, it]); setEditIdx(null); }}
             onClose={() => { btn(); setEditIdx(null); }} btn={btn}/>
         )}
@@ -809,7 +918,7 @@ function PagoStep({ items, total, esCortes, cliente, setCliente, metodoPago, set
 }
 
 // ─── ITEM EDITOR ──────────────────────────────────────────────────────────────
-function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores = [] }) {
+function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores = [], toppingsConfig = TOPPINGS_DEFAULT }) {
   // Detectar categoría automática según los sabores seleccionados
   const [sabores, setSabores] = useState(item?.sabores || []);
   const [cucharon, setCucharon] = useState(item?.cucharon || false);
@@ -959,11 +1068,11 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6}}>TOPPINGS (sin costo)</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:14}}>
-          {[["chamoy","🌶️","Chamoy"],["tajin","🧂","Tajín"],["crema","🥛","Crema"]].map(([k,ic,lb])=>(
-            <button key={k} className="btn" onClick={()=>togTopping(k)}
+          {toppingsConfig.map(tc => (
+            <button key={tc.id} className="btn" onClick={()=>togTopping(tc.id)}
               style={{padding:"10px 4px",borderRadius:11,fontSize:12,fontWeight:800,textAlign:"center",border:"2px solid",
-                borderColor:toppings[k]?ORANGE:CREMA_DARK,background:toppings[k]?"rgba(234,91,29,.12)":"white",color:toppings[k]?ORANGE_DARK:TEXT_DARK}}>
-              <div style={{fontSize:18}}>{ic}</div>{lb}
+                borderColor:toppings[tc.id]?ORANGE:CREMA_DARK,background:toppings[tc.id]?"rgba(234,91,29,.12)":"white",color:toppings[tc.id]?ORANGE_DARK:TEXT_DARK}}>
+              <div style={{fontSize:18}}>{tc.emoji}</div>{tc.nombre}
             </button>
           ))}
         </div>
@@ -1153,7 +1262,7 @@ function ColaTab({ enCola, actualizarPedido, btn, variant = "dark", requirePin, 
                           </div>
                           {/* Toppings y notas abajo */}
                           {toppingsLabel(it.toppings) && (
-                            <div style={{fontSize:14,marginTop:3}}>{toppingsLabel(it.toppings)}</div>
+                            <div style={{fontSize:13,marginTop:3,fontWeight:700,color:isLight?"#9333EA":"#C084FC",letterSpacing:".02em"}}>{toppingsLabel(it.toppings, null, "full")}</div>
                           )}
                           {it.notas && <div className="serif-it" style={{fontSize:14,color:ORANGE,marginTop:3}}>📝 {it.notas}</div>}
                         </>
@@ -1780,6 +1889,84 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = []
     agregarCierre(cierre);
     showSaved && showSaved("Cierre guardado");
 
+    // ─── Exportar Excel del día automáticamente ──────────────────────────
+    try {
+      const fechaLabel = new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
+      const nombreArchivo = `Rosy_Raspados_${fechaLabel}.csv`;
+      const lineas = [];
+      // Encabezado general
+      lineas.push(["ROSY RASPADOS — CIERRE DEL DÍA"]);
+      lineas.push(["Fecha:", new Date().toLocaleDateString("es-MX",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})]);
+      lineas.push(["Cajero:", cajeroActivo]);
+      lineas.push(["Hora de cierre:", cierre.horaCierre]);
+      lineas.push([]);
+      // Ventas
+      lineas.push(["VENTAS DEL DÍA"]);
+      lineas.push(["Método","Total","Pedidos"]);
+      lineas.push(["Efectivo", ventasEfectivo, hoyPagados.filter(p=>p.metodoPago==="Efectivo").length]);
+      lineas.push(["Transferencia", ventasTransfer, hoyPagados.filter(p=>p.metodoPago==="Transferencia").length]);
+      lineas.push(["Terminal", ventasTerminal, hoyPagados.filter(p=>p.metodoPago==="Terminal").length]);
+      lineas.push(["TOTAL", totalDia, hoyPagados.length]);
+      lineas.push([]);
+      lineas.push(["Cortesías:", cortesias]);
+      lineas.push(["Propinas:", propinasDia]);
+      lineas.push(["Raspas hechas:", hoy.flatMap(p=>(p.items||[]).filter(it=>it.tipo!=="especial")).length]);
+      lineas.push([]);
+      // Cuadre
+      lineas.push(["CUADRE DE CAJA"]);
+      lineas.push(["Fondo inicial:", fondoMonto]);
+      lineas.push(["Ventas en efectivo:", ventasEfectivo]);
+      if (totalGastosHoy > 0) lineas.push(["Salidas de caja:", -totalGastosHoy]);
+      lineas.push(["Debería haber:", debeHaber]);
+      lineas.push(["Contado:", contado]);
+      lineas.push([diff===0?"✓ Cuadra perfecto":diff>0?`Sobra $${diff}`:`Falta $${Math.abs(diff)}`]);
+      if (cierre.justificacionDescuadre) lineas.push(["Justificación:", cierre.justificacionDescuadre]);
+      lineas.push([]);
+      // Gastos
+      if (gastosHoy.length > 0) {
+        lineas.push(["SALIDAS DE CAJA"]);
+        lineas.push(["Descripción","Monto","Cajero"]);
+        gastosHoy.forEach(g => lineas.push([g.descripcion, g.monto, g.cajero||""]));
+        lineas.push(["TOTAL SALIDAS", totalGastosHoy]);
+        lineas.push([]);
+      }
+      // Inventario
+      if (Object.keys(inventarioBotes).length > 0) {
+        lineas.push(["INVENTARIO DE BOTES"]);
+        lineas.push(["Sabor","Botes restantes"]);
+        Object.entries(inventarioBotes).forEach(([s,v]) => lineas.push([s, v]));
+        lineas.push([]);
+      }
+      // Compras
+      const comprasList = Object.entries(comprasNecesarias).filter(([_,v])=>v).map(([k])=>k);
+      if (comprasList.length > 0) {
+        lineas.push(["LISTA DE COMPRAS"]);
+        comprasList.forEach(c => lineas.push([c]));
+        lineas.push([]);
+      }
+      // Notas
+      if (notasTurno.trim()) {
+        lineas.push(["NOTAS DEL TURNO"]);
+        lineas.push([notasTurno.trim()]);
+        lineas.push([]);
+      }
+      // Pedidos del día
+      lineas.push(["DETALLE DE PEDIDOS"]);
+      lineas.push(["#","Cliente","Cajero","Método","Total","Propina","Hora","Items"]);
+      hoy.forEach(p => {
+        const items = (p.items||[]).map(it => it.tipo==="especial" ? it.descripcion : `${it.producto?.nombre} (${(it.sabores||[]).join("/")||"s/s"})`).join(" | ");
+        lineas.push([p.numero||"", p.cliente||"", p.cajero||"", p.metodoPago, p.esCortes?"Cortesía":p.total, p.propina||0, fmtTime(p.fecha), items]);
+      });
+      // Generar CSV
+      const csv = lineas.map(r => r.map(c => `"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("
+");
+      const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8;"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = nombreArchivo; a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) { console.error("Error generando Excel:", e); }
+
     // Si es lunes, guardar también resumen semanal
     if (esLunes && agregarCierreSemana) {
       const resumen = generarResumenSemana();
@@ -2160,22 +2347,55 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
       <div className="display" style={{fontSize:30,color:"white",letterSpacing:"-.02em",marginBottom:18}}>CONFIGURACIÓN</div>
 
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
-        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:10,textTransform:"uppercase"}}>👤 Cajeros</div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-          {cajeros.map(c => (
-            <div key={c} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:10,padding:"7px 12px",border:`1px solid ${c===cajeroActivo?ORANGE:"rgba(255,255,255,.14)"}`}}>
-              <span style={{fontWeight:700,fontSize:13,color:c===cajeroActivo?ORANGE:"white"}}>{c===cajeroActivo?"👤 ":""}{c}</span>
-              <button className="btn" onClick={()=>{btn();if(cajeros.length<=1)return;if(c===cajeroActivo)setCajeroActivo(null);setCajeros(cajeros.filter(x=>x!==c));}}
-                style={{background:"none",color:"rgba(255,255,255,.4)",fontSize:14,fontWeight:700,padding:0}}>✕</button>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>👤 Cajeros y PINs</div>
+        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>Cada cajero entra con su PIN personal. Compártelo en persona.</div>
+        {cajeros.map((c, i) => {
+          const nom = c?.nombre || c;
+          const pinC = c?.pin || "";
+          const esActivo = nom === cajeroActivo;
+          return (
+            <div key={i} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"10px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:36,height:36,background:esActivo?ORANGE:"rgba(255,255,255,.12)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Archivo Black',sans-serif",fontSize:16,color:"white",flexShrink:0}}>
+                {nom.charAt(0).toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div className="display" style={{fontSize:14,color:esActivo?ORANGE:"white"}}>{nom.toUpperCase()}{esActivo?" 👤":""}</div>
+              </div>
+              <input type="number" placeholder="PIN" value={pinC} maxLength={4}
+                onChange={e=>{
+                  const newPin = e.target.value.slice(0,4);
+                  setCajeros(cajeros.map((x,j) => j===i ? {nombre:nom, pin:newPin} : x));
+                }}
+                style={{width:72,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:8,padding:"7px 8px",color:"white",fontFamily:"'Archivo Black',sans-serif",fontSize:14,outline:"none",textAlign:"center"}}/>
+              <button className="btn" onClick={()=>{btn();if(cajeros.length<=1)return;if(nom===cajeroActivo)setCajeroActivo(null);setCajeros(cajeros.filter((_,j)=>j!==i));}}
+                style={{background:"rgba(234,91,29,.18)",color:ORANGE,borderRadius:8,padding:"6px 10px",fontWeight:700,fontSize:12,flexShrink:0}}>✕</button>
             </div>
-          ))}
-        </div>
-        <div style={{display:"flex",gap:8}}>
+          );
+        })}
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,marginTop:8}}>
           <input className="input" placeholder="Nombre del cajero" value={nuevoCajero} onChange={e=>setNuevoCajero(e.target.value)}
-            onKeyDown={e=>{if(e.key==="Enter"&&nuevoCajero.trim()){btn();setCajeros([...cajeros,nuevoCajero.trim()]);setNuevoCajero("");}}}/>
-          <button className="btn" onClick={()=>{if(nuevoCajero.trim()){btn();setCajeros([...cajeros,nuevoCajero.trim()]);setNuevoCajero("");}}}
+            onKeyDown={e=>{if(e.key==="Enter"&&nuevoCajero.trim()){btn();setCajeros([...cajeros,{nombre:nuevoCajero.trim(),pin:""}]);setNuevoCajero("");}}}/>
+          <button className="btn" onClick={()=>{if(nuevoCajero.trim()){btn();setCajeros([...cajeros,{nombre:nuevoCajero.trim(),pin:""}]);setNuevoCajero("");}}}
             style={{background:ORANGE,color:"white",borderRadius:12,padding:"0 18px",fontWeight:800,fontSize:20,flexShrink:0}}>+</button>
         </div>
+        <div className="serif-it" style={{fontSize:13,color:"rgba(255,255,255,.4)",marginTop:8}}>Escribe el PIN directo en el campo de cada cajero. Sin PIN, entra sin contraseña.</div>
+      </div>
+
+      {/* TOPPINGS EDITABLES */}
+      <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>🌶️ Toppings</div>
+        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>Cambia el emoji de cada topping. El nombre no se puede cambiar.</div>
+        {(toppingsConfig||TOPPINGS_DEFAULT).map((tc,i) => (
+          <div key={tc.id} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"10px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:12}}>
+            <input type="text" value={tc.emoji} maxLength={2}
+              onChange={e=>{
+                const newEmoji = e.target.value;
+                setToppingsConfig && setToppingsConfig(prev => prev.map((x,j) => j===i ? {...x, emoji:newEmoji} : x));
+              }}
+              style={{width:52,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:8,padding:"8px",color:"white",fontSize:22,outline:"none",textAlign:"center"}}/>
+            <div className="display" style={{fontSize:14,color:"white",letterSpacing:".02em"}}>{tc.nombre.toUpperCase()}</div>
+          </div>
+        ))}
       </div>
 
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
