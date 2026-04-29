@@ -268,7 +268,7 @@ export default function App() {
     return <CajeroScreen cajeros={cajeros} onSelect={c => { btn("success"); setCajeroActivo(c); }} />;
   }
 
-  const fondoHoyValido = fondoCaja?.fecha?.startsWith(todayKey()) && fondoCaja?.cajero === cajeroActivo;
+  const fondoHoyValido = fondoCaja?.fecha?.startsWith(todayKey()); // un solo fondo por día, compartido entre cajeros
   if (!fondoHoyValido) {
     return <FondoCajaScreen cajero={cajeroActivo} onConfirm={(monto) => {
       btn("success");
@@ -2263,7 +2263,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = []
 }
 
 // ─── CONFIG TAB ───────────────────────────────────────────────────────────────
-function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setCajeros, cajeroActivo, setCajeroActivo, preciosLibres, setPreciosLibres, ventasLibres, setVentasLibres, pinJefe, setPinJefe, btn, requirePin, showSaved }) {
+function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setCajeros, cajeroActivo, setCajeroActivo, preciosLibres, setPreciosLibres, ventasLibres, setVentasLibres, toppingsConfig, setToppingsConfig, pinJefe, setPinJefe, btn, requirePin, showSaved }) {
   const [editProd, setEditProd] = useState(null);
   const [formProd, setFormProd] = useState({ nombre:"", precio:"", categoria:"natural", emoji:"🍧" });
   const [nuevoCajero, setNuevoCajero] = useState("");
