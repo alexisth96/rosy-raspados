@@ -2586,6 +2586,7 @@ function HistorialTab({ pedidos, btn }) {
     </div>
   );
 
+  
   const PedidoCard = ({ p }) => (
     <div style={{background:"white",borderRadius:14,padding:"14px 16px",marginBottom:8,border:`1px solid ${CREMA_DARK}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:6}}>
@@ -2602,3 +2603,5 @@ function HistorialTab({ pedidos, btn }) {
         <div className="display" style={{fontSize:22,color:p.esCortes?"#7C3AED":ORANGE,lineHeight:1}}>
           {p.esCortes?"🎁":fmt(p.total)}
         <
+
+          
