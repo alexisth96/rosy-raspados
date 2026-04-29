@@ -169,3 +169,4 @@ Siempre puedes mover el proyecto a otro hosting (Netlify, Cloudflare Pages, GitH
 - Para borrar todos los datos del celular: configuración del navegador → datos del sitio → eliminar.
 
 Si tienes dudas técnicas, tu archivo `src/App.jsx` es el mismo de siempre, solo se le agregó arriba la integración con localForage. Todo lo demás (el código de tu sistema, la lógica, los componentes) sigue igual.
+#2
