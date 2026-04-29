@@ -2601,38 +2601,4 @@ function HistorialTab({ pedidos, btn }) {
         </div>
         <div className="display" style={{fontSize:22,color:p.esCortes?"#7C3AED":ORANGE,lineHeight:1}}>
           {p.esCortes?"🎁":fmt(p.total)}
-        </div>
-      </div>
-      {p.items.map((it,i) => (
-        <div key={i} style={{fontSize:13,color:TEXT_MUTED,marginTop:2,paddingLeft:4}} className="serif-it">
-          {it.tipo==="especial" ? `✏️ ${it.descripcion}` : `${it.producto?.nombre} — ${(it.sabores||[]).join(", ")||"sin sabor"}${it.cucharon?" + cucharón":""}`}
-        </div>
-      ))}
-    </div>
-  );
-
-  return (
-    <div className="slide">
-      <div className="display" style={{fontSize:30,color:TEXT_DARK,letterSpacing:"-.02em",marginBottom:6}}>HISTORIAL</div>
-      <div className="serif-it" style={{fontSize:15,color:TEXT_MUTED,marginBottom:18}}>Pedidos ya entregados hoy y anteriores</div>
-
-      {hoy.length > 0 && (
-        <>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:10,textTransform:"uppercase"}}>
-            HOY — {hoy.length} pedidos · {fmt(hoy.filter(p=>!p.esCortes).reduce((s,p)=>s+p.total,0))}
-          </div>
-          {hoy.map(p => <PedidoCard key={p.id} p={p}/>)}
-        </>
-      )}
-
-      {anteriores.length > 0 && (
-        <>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:10,marginTop:16,textTransform:"uppercase"}}>
-            ANTERIORES — {anteriores.length} pedidos
-          </div>
-          {anteriores.slice(0,30).map(p => <PedidoCard key={p.id} p={p}/>)}
-        </>
-      )}
-    </div>
-  );
-}
+        <
