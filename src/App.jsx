@@ -334,6 +334,7 @@ export default function App() {
         @media (max-width: 899px) {
           .split-pos { display: block; }
           .split-pos .right-col { display: none; }
+          .split-pos .left-col { padding: 16px 20px !important; }
         }
         .btn-toggle-cola {
           display: none;
@@ -382,7 +383,7 @@ export default function App() {
         {tab === "pos" && (
           <>
             <div className="split-pos">
-              <div className="left-col" style={{display: subTab === "cola" ? "none" : "block"}}>
+              <div className="left-col" style={{display: subTab === "cola" ? "none" : "block", boxSizing:"border-box"}}>
                 <POSTab productos={productos} preciosLibres={preciosLibres} ventasLibres={ventasLibres} toppingsConfig={toppingsConfig} agregarPedido={agregarPedido} cajeroActivo={cajeroActivo} btn={btn} numeroPedido={numeroPedido} pedidos={pedidos} requirePin={requirePin} showSaved={showSaved}/>
               </div>
               {subTab === "cola" && window.innerWidth < 900 && (
