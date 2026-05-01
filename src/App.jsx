@@ -73,7 +73,10 @@ const fmt     = (n) => `$${Number(n||0).toFixed(0)}`;
 const fmtFull = (n) => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n||0);
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("es-MX",{day:"2-digit",month:"short"});
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
-const todayKey = () => new Date().toISOString().split("T")[0];
+const todayKey = () => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+};
 const uid = () => Math.random().toString(36).slice(2,9);
 const padNum = (n) => String(n).padStart(3, "0");
 
@@ -218,7 +221,11 @@ select option{background:${COBALT_DARK};color:white;}
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [cajeroActivo, setCajeroActivo] = useState(() => load("rr_cajero_hoy", null));
+  const [cajeroActivo, setCajeroActivo] = useState(() => {
+    // Siempre pedir cajero al iniciar la app
+    save("rr_cajero_hoy", null);
+    return null;
+  });
   const [cajeros, setCajeros]           = useState(() => load("rr_cajeros", CAJEROS_DEFAULT));
   const [productos, setProductos]       = useState(() => load("rr_prods", PRODUCTOS_DEFAULT));
   const [pedidos, setPedidos]           = useState(() => load("rr_pedidos", []));
@@ -263,6 +270,13 @@ export default function App() {
   const agregarCierre     = useCallback(c => setCierres(prev => [c, ...prev]), []);
   const agregarCierreSemana = useCallback(c => setCierresSemana(prev => [c, ...prev]), []);
   const agregarGasto      = useCallback((g) => setGastosCaja(prev => [{...g, id: uid(), fecha: new Date().toISOString(), cajero: cajeroActivo}, ...prev]), [cajeroActivo]);
+
+  // Reset subTab a "pedido" al girar a horizontal
+  useEffect(() => {
+    const handleResize = () => { if (window.innerWidth >= 900) setSubTab("pedido"); };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Enter cierra teclado en cualquier input de la app (debe ir ANTES de returns condicionales)
   useEffect(() => {
@@ -371,8 +385,8 @@ export default function App() {
               <div className="left-col" style={{display: subTab === "cola" ? "none" : "block"}}>
                 <POSTab productos={productos} preciosLibres={preciosLibres} ventasLibres={ventasLibres} toppingsConfig={toppingsConfig} agregarPedido={agregarPedido} cajeroActivo={cajeroActivo} btn={btn} numeroPedido={numeroPedido} pedidos={pedidos} requirePin={requirePin} showSaved={showSaved}/>
               </div>
-              {subTab === "cola" && (
-                <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px",display:"block"}} className="cream-section">
+              {subTab === "cola" && window.innerWidth < 900 && (
+                <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section">
                   <ColaTab enCola={enCola} actualizarPedido={actualizarPedido} btn={btn} variant="light" requirePin={requirePin} showSaved={showSaved} productos={productos}/>
                 </div>
               )}
@@ -387,13 +401,7 @@ export default function App() {
                 : <><span style={{fontSize:18}}>+</span> Nuevo pedido</>
               }
             </button>
-            {/* Reset automático al girar a horizontal */}
-            {typeof window !== "undefined" && (() => {
-              if (window.innerWidth >= 900 && subTab === "cola") {
-                setTimeout(() => setSubTab("pedido"), 0);
-              }
-              return null;
-            })()}
+
           </>
         )}
         {tab === "cola" && (
@@ -1092,30 +1100,25 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
         {/* PASO 2: Tamaño */}
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:8}}>2. TAMAÑO</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:14}}>
-          {productosFiltrados.map(p => (
-            <button key={p.id} className="btn" onClick={()=>{btn();setProd(p);}}
-              style={{padding:"14px 12px",borderRadius:12,fontWeight:800,border:"2px solid",
-                borderColor:prod.id===p.id?ORANGE:CREMA_DARK,background:prod.id===p.id?"rgba(230,104,50,.12)":"white",
-                color:TEXT_DARK,textAlign:"center"}}>
-              <div className="display" style={{fontSize:22,letterSpacing:"-.01em"}}>{p.nombre.split(" ").pop().toUpperCase()}</div>
-              <div className="display" style={{fontSize:26,color:ORANGE,marginTop:4}}>${p.precio}</div>
-            </button>
-          ))}
-        </div>
+        {sabores.length === 0 ? (
+          <div style={{padding:"18px",borderRadius:12,background:"rgba(0,0,0,.08)",textAlign:"center",marginBottom:14}}>
+            <div className="serif-it" style={{fontSize:15,color:TEXT_MUTED}}>Primero elige un sabor arriba</div>
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:14}}>
+            {productosFiltrados.map(p => (
+              <button key={p.id} className="btn" onClick={()=>{btn();setProd(p);}}
+                style={{padding:"18px 12px",borderRadius:12,fontWeight:800,border:"2px solid",
+                  borderColor:prod.id===p.id?ORANGE:CREMA_DARK,background:prod.id===p.id?"rgba(230,104,50,.12)":"white",
+                  color:TEXT_DARK,textAlign:"center"}}>
+                <div className="display" style={{fontSize:24,letterSpacing:"-.01em"}}>{p.nombre.split(" ").pop().toUpperCase()}</div>
+                <div className="display" style={{fontSize:30,color:ORANGE,marginTop:4}}>${p.precio}</div>
+              </button>
+            ))}
+          </div>
+        )}
 
-        {(() => {
-          const esAgua = prod?.categoria === "agua";
-          const precioCup = esAgua ? CUCHARON_AGUA : CUCHARON_PRECIO;
-          return (
-        <button className="btn" onClick={()=>{btn();setCucharon(!cucharon);}}
-          style={{width:"100%",padding:"12px",borderRadius:12,marginBottom:10,fontWeight:800,fontSize:14,border:"2px solid",
-            borderColor:cucharon?ORANGE:CREMA_DARK,background:cucharon?"rgba(230,104,50,.12)":"white",color:cucharon?ORANGE_DARK:TEXT_DARK,textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:22}}>🥄</span>
-          <span>{esAgua ? "Más jugo extra" : "Cucharón extra"} {cucharon ? ("✓ incluido (+$" + precioCup + ")") : ("(+$" + precioCup + ")")}</span>
-        </button>
-          );
-        })()}
+
 
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6}}>TOPPINGS (sin costo)</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:14}}>
@@ -2438,18 +2441,34 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
             </div>
 
             <div style={{marginBottom:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase"}}>¿Cuánto llegó en terminal (Mercado Pago)?</div>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase"}}>¿Cuánto llegó en terminal? (sin restar comisión)</div>
               <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(167,139,250,.3)",padding:"4px 14px"}}>
                 <span className="display" style={{fontSize:18,color:"rgba(255,255,255,.4)"}}>$</span>
                 <input type="number" placeholder="0" value={verificaciones.terminal}
                   onChange={e=>setVerificaciones(v=>({...v,terminal:e.target.value}))}
                   style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:22,color:"white",padding:"8px 0"}}/>
               </div>
-              {verificaciones.terminal !== "" && (
-                <div className="serif-it" style={{fontSize:13,marginTop:4,color:Number(verificaciones.terminal)===ventasTerminal?"#4ADE80":ORANGE}}>
-                  {Number(verificaciones.terminal)===ventasTerminal ? "✓ Cuadra perfecto" : Number(verificaciones.terminal)>ventasTerminal ? `↑ Llegó ${fmt(Number(verificaciones.terminal)-ventasTerminal)} de más` : `↓ Falta ${fmt(ventasTerminal-Number(verificaciones.terminal))}`}
-                </div>
-              )}
+              {verificaciones.terminal !== "" && (() => {
+                const bruto = Number(verificaciones.terminal);
+                const com = bruto * COMISION_TERMINAL;
+                const iva = com * IVA_COMISION;
+                const neto = bruto - com - iva;
+                return (
+                  <div style={{marginTop:8,background:"rgba(167,139,250,.1)",borderRadius:10,padding:"10px 12px"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,fontSize:12,marginBottom:6}}>
+                      <span style={{color:"rgba(255,255,255,.6)"}}>Comisión (3.5%)</span>
+                      <span style={{color:ORANGE,fontWeight:700,textAlign:"right"}}>-{fmt(com)}</span>
+                      <span style={{color:"rgba(255,255,255,.6)"}}>IVA comisión (16%)</span>
+                      <span style={{color:ORANGE,fontWeight:700,textAlign:"right"}}>-{fmt(iva)}</span>
+                      <span style={{color:"rgba(255,255,255,.9)",fontWeight:800}}>Lo que realmente recibes</span>
+                      <span className="display" style={{color:"#4ADE80",fontSize:16,textAlign:"right"}}>{fmt(neto)}</span>
+                    </div>
+                    <div className="serif-it" style={{fontSize:12,color:neto===ventasTerminal?"#4ADE80":ORANGE}}>
+                      {neto===ventasTerminal ? "✓ Cuadra con lo esperado" : neto>ventasTerminal ? ("Llegó " + fmt(neto-ventasTerminal) + " de más (neto)") : ("Falta " + fmt(ventasTerminal-neto) + " (neto)")}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div style={{marginBottom:12}}>
@@ -3052,8 +3071,17 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn }) {
 // ─── HISTORIAL TAB ────────────────────────────────────────────────────────────
 function HistorialTab({ pedidos, btn, actualizarPedido }) {
   const entregados = pedidos.filter(p => p.entregado).sort((a,b) => b.fecha.localeCompare(a.fecha));
-  const hoy = entregados.filter(p => p.fecha.startsWith(todayKey()));
-  const anteriores = entregados.filter(p => !p.fecha.startsWith(todayKey()));
+
+  // Agrupar por fecha local del dispositivo
+  const porDia = {};
+  entregados.forEach(p => {
+    const d = new Date(p.fecha);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (!porDia[key]) porDia[key] = [];
+    porDia[key].push(p);
+  });
+  const diasOrdenados = Object.keys(porDia).sort((a,b) => b.localeCompare(a));
+  const hoyKey = todayKey();
 
   if (entregados.length === 0) return (
     <div style={{textAlign:"center",padding:"70px 0",color:TEXT_MUTED}}>
@@ -3104,35 +3132,41 @@ function HistorialTab({ pedidos, btn, actualizarPedido }) {
         )}
         {p.items.map((it,i) => (
           <div key={i} style={{fontSize:13,color:TEXT_MUTED,marginTop:2,paddingLeft:4}} className="serif-it">
-            {it.tipo==="especial" ? `✏️ ${it.descripcion}` : `${it.producto?.nombre} — ${(it.sabores||[]).join(", ")||"sin sabor"}${it.cucharon?" + cucharón":""}`}
+            {it.tipo==="especial" ? ("✏️ " + it.descripcion) : ((it.producto?.nombre||"") + " — " + ((it.sabores||[]).join(", ")||"sin sabor"))}
           </div>
         ))}
       </div>
     );
   };
 
+  const labelDia = (key) => {
+    if (key === hoyKey) return "HOY";
+    const d = new Date(key + "T12:00:00");
+    return d.toLocaleDateString("es-MX", {weekday:"long", day:"2-digit", month:"long"}).toUpperCase();
+  };
+
   return (
     <div className="slide">
       <div className="display" style={{fontSize:30,color:TEXT_DARK,letterSpacing:"-.02em",marginBottom:6}}>HISTORIAL</div>
-      <div className="serif-it" style={{fontSize:15,color:TEXT_MUTED,marginBottom:18}}>Pedidos ya entregados hoy y anteriores</div>
+      <div className="serif-it" style={{fontSize:15,color:TEXT_MUTED,marginBottom:18}}>Pedidos por día</div>
 
-      {hoy.length > 0 && (
-        <>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:10,textTransform:"uppercase"}}>
-            HOY — {hoy.length} pedidos · {fmt(hoy.filter(p=>!p.esCortes).reduce((s,p)=>s+p.total,0))}
+      {diasOrdenados.map(dia => {
+        const pedidosDia = porDia[dia];
+        const totalDia = pedidosDia.filter(p=>!p.esCortes).reduce((s,p)=>s+p.total,0);
+        return (
+          <div key={dia} style={{marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${CREMA_DARK}`}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:dia===hoyKey?ORANGE:TEXT_MUTED,textTransform:"uppercase"}}>
+                {labelDia(dia)}
+              </div>
+              <div style={{fontSize:12,fontWeight:700,color:TEXT_MUTED}}>
+                {pedidosDia.length} pedidos · {fmt(totalDia)}
+              </div>
+            </div>
+            {pedidosDia.map(p => <PedidoCard key={p.id} p={p}/>)}
           </div>
-          {hoy.map(p => <PedidoCard key={p.id} p={p}/>)}
-        </>
-      )}
-
-      {anteriores.length > 0 && (
-        <>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:10,marginTop:16,textTransform:"uppercase"}}>
-            ANTERIORES — {anteriores.length} pedidos
-          </div>
-          {anteriores.slice(0,30).map(p => <PedidoCard key={p.id} p={p}/>)}
-        </>
-      )}
+        );
+      })}
     </div>
   );
 }
