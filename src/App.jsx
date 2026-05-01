@@ -264,6 +264,18 @@ export default function App() {
   const agregarCierreSemana = useCallback(c => setCierresSemana(prev => [c, ...prev]), []);
   const agregarGasto      = useCallback((g) => setGastosCaja(prev => [{...g, id: uid(), fecha: new Date().toISOString(), cajero: cajeroActivo}, ...prev]), [cajeroActivo]);
 
+  // Enter cierra teclado en cualquier input de la app (debe ir ANTES de returns condicionales)
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Enter" && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
+        if (e.target.tagName === "TEXTAREA" && e.shiftKey) return;
+        e.target.blur();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
   const enCola = pedidos.filter(p => !p.entregado).sort((a,b) => a.fecha.localeCompare(b.fecha));
   const pendientesPago = pedidos.filter(p => !p.pagado && !p.entregado && !p.esCortes).length;
   const numeroPedido = pedidos.length + 1;
@@ -279,18 +291,6 @@ export default function App() {
       setFondoCaja({ monto, cajero: cajeroActivo, fecha: new Date().toISOString() });
     }} onChangeUser={() => { btn(); setCajeroActivo(null); setTab("pos"); }}/>;
   }
-
-  // Enter cierra teclado en cualquier input de la app
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === "Enter" && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
-        if (e.target.tagName === "TEXTAREA" && e.shiftKey) return;
-        e.target.blur();
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, []);
 
   return (
     <div style={{fontFamily:"'Inter',sans-serif",background:COBALT,minHeight:"100vh",color:"white"}}>
