@@ -109,15 +109,17 @@ const TOPPINGS_DEFAULT = [
 ];
 // Fallback para código que use TOPPING_ICONS
 const TOPPING_ICONS = { chamoy: "🌶️", tajin: "🧂", crema: "🥛" };
-function toppingsLabel(t, config = null, mode = "emoji") {
+function toppingsLabel(t, config, mode) {
+  const _config = config || null;
+  const _mode = mode || "emoji";
   if (!t) return "";
-  const cfg = config || TOPPINGS_DEFAULT;
+  const cfg = _config || TOPPINGS_DEFAULT;
   const activos = Object.entries(t).filter(([_,v])=>v).map(([k]) => {
     const found = cfg.find(c => c.id === k);
     return found || { id:k, nombre:k, emoji: TOPPING_ICONS[k]||"•" };
   });
   if (activos.length === 0) return "";
-  if (mode === "full") return activos.map(c => `${c.emoji} ${c.nombre}`).join(" · ");
+  if (_mode === "full") return activos.map(c => `${c.emoji} ${c.nombre}`).join(" · ");
   return activos.map(c => c.emoji).join(" ");
 }
 
@@ -593,9 +595,9 @@ function FondoCajaScreen({ cajero, onConfirm, onChangeUser }) {
 }
 
 // ─── POS TAB ──────────────────────────────────────────────────────────────────
-function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos, requirePin, showSaved }) {
-  const _pedidosPOS = pedidos || [];
-  const _toppingsConfigPOS = toppingsConfig || TOPPINGS_DEFAULT;
+function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig: toppingsConfigProp2, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos: pedidosProp, requirePin, showSaved }) {
+  const pedidos = pedidosProp || [];
+  const toppingsConfig = toppingsConfigProp2 || TOPPINGS_DEFAULT;
   const [items, setItems] = useState(() => load("rr_items_temp", []));
   const [editIdx, setEditIdx] = useState(null);
   const [showVentaLibre, setShowVentaLibre] = useState(false);
@@ -609,7 +611,7 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig, agrega
   // Calcular top 3 sabores del último mes
   const topSabores = (() => {
     const haceMes = new Date(); haceMes.setMonth(haceMes.getMonth() - 1);
-    const recientes = _pedidosPOS.filter(p => new Date(p.fecha) >= haceMes);
+    const recientes = pedidos.filter(p => new Date(p.fecha) >= haceMes);
     const allSabores = recientes.flatMap(p => (p.items||[]).filter(it => it.tipo !== "especial").flatMap(it => it.sabores || []));
     if (allSabores.length < 30) return [];
     const conteo = {};
@@ -963,19 +965,16 @@ function PagoStep({ items, total, esCortes, cliente, setCliente, metodoPago, set
     </div>
   );
 }
-  return (
 
 // ITEM EDITOR
-function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores, toppingsConfig }) {
-  const _topSabores = topSabores || [];
-  const _toppingsConfigIE = toppingsConfig || TOPPINGS_DEFAULT;
+function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores: topSaboresProp, toppingsConfig: toppingsConfigProp }) {
+  const topSabores = topSaboresProp || [];
+  const toppingsConfig = toppingsConfigProp || TOPPINGS_DEFAULT;
   // Detectar categoría automática según los sabores seleccionados
   const [sabores, setSabores] = useState(item?.sabores || []);
   const [cucharon, setCucharon] = useState(item?.cucharon || false);
   const [notas, setNotas] = useState(item?.notas || "");
   const [toppings, setToppings] = useState(item?.toppings || { chamoy: false, tajin: false, crema: false });
-  const topSabores = _topSabores;
-  const toppingsConfig = _toppingsConfigIE;
   const togTopping = (k) => { btn("check"); setToppings(prev => ({ ...prev, [k]: !prev[k] })); };
 
   // Auto-detectar categoría por sabores seleccionados
@@ -1256,13 +1255,13 @@ function VentaLibreModal({ preciosLibres, ventasLibres, item, onSave, onClose, b
 }
 
 // ─── COLA TAB ─────────────────────────────────────────────────────────────────
-function ColaTab({ enCola, actualizarPedido, btn, variant, requirePin, showSaved, productos }) {
-  const _variantCola = variant || "dark";
-  const _productosCola = productos || [];
+function ColaTab({ enCola, actualizarPedido, btn, variant: variantProp, requirePin, showSaved, productos: productosProp }) {
+  const variant = variantProp || "dark";
+  const productos = productosProp || [];
   const [confirmId, setConfirmId] = useState(null);
   const [editandoId, setEditandoId] = useState(null); // id pedido a editar
   const [editandoItemIdx, setEditandoItemIdx] = useState(null); // índice del item
-  const isLight = _variantCola === "light";
+  const isLight = variant === "light";
 
   const colors = isLight
     ? { text:TEXT_DARK, muted:TEXT_MUTED, card:"white", cardSig:"white", border:CREMA_DARK, borderSig:ORANGE, sig:ORANGE, divider:CREMA_DARK }
@@ -1557,9 +1556,9 @@ function VasosTab({ vasosExtra, agregarVasos, btn }) {
 }
 
 // ─── REPORTES TAB ─────────────────────────────────────────────────────────────
-function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja, cierresSemana, btn, requirePin }) {
-  const _gastosCajaR = gastosCaja || [];
-  const _cierresSemanaR = cierresSemana || [];
+function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja: gastosCajaProp, cierresSemana: cierresSemProp, btn, requirePin }) {
+  const gastosCaja = gastosCajaProp || [];
+  const cierresSemana = cierresSemProp || [];
   const [periodo, setPeriodo] = useState("hoy");
   const [busqueda, setBusqueda] = useState("");
   const [editPagoId, setEditPagoId] = useState(null);
@@ -1909,9 +1908,9 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja, cierre
 }
 
 // ─── CIERRE TAB ───────────────────────────────────────────────────────────────
-function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados, setInventariosGuardados, pinJefe }) {
-  const _gastosCajaC = gastosCaja || [];
-  const _inventariosG = inventariosGuardados || {};
+function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gastosCajaPropC, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados: invGuardadosProp, setInventariosGuardados, pinJefe }) {
+  const gastosCaja = gastosCajaPropC || [];
+  const inventariosGuardados = invGuardadosProp || {};
   const [efectivoContado, setEfectivoContado] = useState("");
   const [notasTurno, setNotasTurno] = useState("");
   const [comprasFalta, setComprasFalta] = useState("");
@@ -2821,8 +2820,8 @@ function PinModal({ label, pinJefe, onSuccess, onCancel, btn }) {
 }
 
 // ─── GASTOS TAB ───────────────────────────────────────────────────────────────
-function GastosTab({ gastosCaja, agregarGasto, requirePin, btn, showSaved }) {
-  const _gastosCajaG = gastosCaja || [];
+function GastosTab({ gastosCaja: gastosCajaPropG, agregarGasto, requirePin, btn, showSaved }) {
+  const gastosCaja = gastosCajaPropG || [];
   const [monto, setMonto] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [verHistorial, setVerHistorial] = useState(false);
