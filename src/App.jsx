@@ -227,6 +227,7 @@ export default function App() {
   const [ventasLibres, setVentasLibres]  = useState(() => load("rr_ventas_libres_tipos", VENTAS_LIBRES_DEFAULT));
   const [pinJefe, setPinJefe]           = useState(() => load("rr_pin_jefe", PIN_DEFAULT));
   const [toppingsConfig, setToppingsConfig] = useState(() => load("rr_toppings", TOPPINGS_DEFAULT));
+  const [inventariosGuardados, setInventariosGuardados] = useState(() => load("rr_inventarios", {}));
   const [gastosCaja, setGastosCaja]     = useState(() => load("rr_gastos_caja", []));
   const [cierresSemana, setCierresSemana] = useState(() => load("rr_cierres_semana", []));
   const [tab, setTab] = useState("pos");
@@ -248,6 +249,7 @@ export default function App() {
   useEffect(() => save("rr_ventas_libres_tipos", ventasLibres), [ventasLibres]);
   useEffect(() => save("rr_pin_jefe", pinJefe), [pinJefe]);
   useEffect(() => save("rr_toppings", toppingsConfig), [toppingsConfig]);
+  useEffect(() => save("rr_inventarios", inventariosGuardados), [inventariosGuardados]);
   useEffect(() => save("rr_gastos_caja", gastosCaja), [gastosCaja]);
   useEffect(() => save("rr_cierres_semana", cierresSemana), [cierresSemana]);
 
@@ -275,6 +277,18 @@ export default function App() {
       setFondoCaja({ monto, cajero: cajeroActivo, fecha: new Date().toISOString() });
     }} onChangeUser={() => { btn(); setCajeroActivo(null); setTab("pos"); }}/>;
   }
+
+  // Enter cierra teclado en cualquier input de la app
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Enter" && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
+        if (e.target.tagName === "TEXTAREA" && e.shiftKey) return;
+        e.target.blur();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   return (
     <div style={{fontFamily:"'Inter',sans-serif",background:COBALT,minHeight:"100vh",color:"white"}}>
@@ -371,6 +385,13 @@ export default function App() {
                 : <><span style={{fontSize:18}}>+</span> Nuevo pedido</>
               }
             </button>
+            {/* Reset automático al girar a horizontal */}
+            {typeof window !== "undefined" && (() => {
+              if (window.innerWidth >= 900 && subTab === "cola") {
+                setTimeout(() => setSubTab("pedido"), 0);
+              }
+              return null;
+            })()}
           </>
         )}
         {tab === "cola" && (
@@ -379,9 +400,9 @@ export default function App() {
           </div>
         )}
         {tab === "reportes" && <div style={{padding:"20px"}}><ReportesTab pedidos={pedidos} actualizarPedido={actualizarPedido} vasosExtra={vasosExtra} gastosCaja={gastosCaja} cierresSemana={cierresSemana} btn={btn} requirePin={requirePin}/></div>}
-        {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn}/></div>}
+        {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido}/></div>}
         {tab === "gastos"   && <div style={{padding:"20px"}}><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
-        {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved}/></div>}
+        {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe}/></div>}
         {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
       </div>
     </div>
@@ -670,7 +691,11 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig = TOPPI
           <div style={{width:38,height:38,background:ORANGE,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"white",flexShrink:0}}>+</div>
           <div>
             <div className="display" style={{fontSize:16,color:"white",letterSpacing:".02em"}}>VENTA LIBRE</div>
-            <div className="serif-it" style={{fontSize:15,color:"rgba(255,255,255,.6)",marginTop:1}}>Cucharón suelto · vaso · hielo · precio a mano</div>
+            <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.6)",marginTop:1}}>
+              {ventasLibres&&ventasLibres.filter(vl=>vl.nombre!=="Venta libre").length>0
+                ? ventasLibres.filter(vl=>vl.nombre!=="Venta libre").map(vl=>`${vl.emoji} ${vl.nombre}`).join(" · ")
+                : "Cucharón suelto · vaso · hielo · precio a mano"}
+            </div>
           </div>
         </button>
 
@@ -678,6 +703,7 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig = TOPPI
           <ItemRow key={idx} item={it} idx={idx}
             onEdit={() => { btn(); setEditIdx(idx); }}
             onRemove={() => { btn(); setItems(items.filter((_,i) => i !== idx)); }}
+            onDuplicate={() => { btn("check"); setItems([...items, {...it}]); }}
           />
         ))}
 
@@ -708,13 +734,18 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig = TOPPI
             onClose={() => { btn(); setEditIdx(null); }} btn={btn}/>
         )}
         {editIdx !== null && typeof editIdx === "number" && items[editIdx]?.tipo === "especial" && (
-          <VentaLibreModal preciosLibres={preciosLibres} item={items[editIdx]} tipoNombre={items[editIdx]?.tipoLibre || "Venta libre"} tipoEmoji={items[editIdx]?.emojiLibre || "✏️"}
-            onSave={it => { btn("success"); setItems(items.map((x,i) => i === editIdx ? it : x)); setEditIdx(null); }}
+          <VentaLibreModal preciosLibres={preciosLibres} ventasLibres={ventasLibres||[]} item={items[editIdx]}
+            onSave={(it) => { btn("success"); setItems(items.map((x,i) => i === editIdx ? it : x)); setEditIdx(null); }}
             onClose={() => { btn(); setEditIdx(null); }} btn={btn}/>
         )}
         {showVentaLibre && (
-          <VentaLibreModal preciosLibres={preciosLibres} tipoNombre={showVentaLibre.tipo || "Venta libre"} tipoEmoji={showVentaLibre.emoji || "✏️"}
-            onSave={it => { btn("success"); setItems([...items, {...it, tipoLibre: showVentaLibre.tipo, emojiLibre: showVentaLibre.emoji}]); setShowVentaLibre(false); }}
+          <VentaLibreModal preciosLibres={preciosLibres} ventasLibres={ventasLibres||[]}
+            onSave={(it, cant=1) => {
+              btn("success");
+              const nuevos = Array.from({length:cant}, () => ({...it}));
+              setItems([...items, ...nuevos]);
+              setShowVentaLibre(false);
+            }}
             onClose={() => { btn(); setShowVentaLibre(false); }} btn={btn}/>
         )}
       </>}
@@ -736,10 +767,10 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig = TOPPI
 }
 
 // ─── ITEM ROW ─────────────────────────────────────────────────────────────────
-function ItemRow({ item, onEdit, onRemove }) {
+function ItemRow({ item, onEdit, onRemove, onDuplicate }) {
   const isEsp = item.tipo === "especial";
   return (
-    <div style={{background:CREMA,borderRadius:14,padding:"12px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+    <div style={{background:CREMA,borderRadius:14,padding:"12px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
       <div style={{flex:1,minWidth:0}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:34,height:34,background:isEsp?COBALT:ORANGE,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
@@ -765,12 +796,21 @@ function ItemRow({ item, onEdit, onRemove }) {
           </div>
         </div>
       </div>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-        <div className="display" style={{fontSize:22,color:ORANGE,lineHeight:1}}>{fmt(calcItemTotal(item))}</div>
-        <div style={{display:"flex",gap:4}}>
-          <button className="btn" onClick={onEdit} style={{background:CREMA_DARK,color:TEXT_DARK,borderRadius:7,padding:"4px 9px",fontSize:11,fontWeight:700}}>EDIT</button>
-          <button className="btn" onClick={onRemove} style={{background:"rgba(234,91,29,.18)",color:ORANGE_DARK,borderRadius:7,padding:"4px 8px",fontSize:11,fontWeight:700}}>✕</button>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        {/* Controles tipo carrito */}
+        <div style={{display:"flex",alignItems:"center",background:"white",border:`2px solid ${CREMA_DARK}`,borderRadius:10,overflow:"hidden"}}>
+          <button className="btn" onClick={onRemove}
+            style={{width:34,height:36,background:"none",color:ORANGE_DARK,fontSize:20,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>
+            −
+          </button>
+          <span className="display" style={{fontSize:14,color:TEXT_DARK,minWidth:16,textAlign:"center",padding:"0 2px"}}>1</span>
+          <button className="btn" onClick={onDuplicate}
+            style={{width:34,height:36,background:"none",color:COBALT,fontSize:20,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>
+            +
+          </button>
         </div>
+        <div className="display" style={{fontSize:20,color:ORANGE,lineHeight:1,minWidth:38,textAlign:"right"}}>{fmt(calcItemTotal(item))}</div>
+        <button className="btn" onClick={onEdit} style={{background:CREMA_DARK,color:TEXT_DARK,borderRadius:7,padding:"5px 9px",fontSize:12,fontWeight:700}}>✏️</button>
       </div>
     </div>
   );
@@ -778,146 +818,152 @@ function ItemRow({ item, onEdit, onRemove }) {
 
 // ─── PAGO STEP ────────────────────────────────────────────────────────────────
 function PagoStep({ items, total, esCortes, cliente, setCliente, metodoPago, setMetodoPago, numeroPedido, onBack, onConfirm, onCancel, btn }) {
+  const [paso, setPaso] = useState(1); // 1: nombre+método, 2: cobrar
   const [montoRecibido, setMontoRecibido] = useState("");
   const [propina, setPropina] = useState("");
   const cambio = montoRecibido !== "" && Number(montoRecibido) >= total ? Number(montoRecibido) - total : null;
+
+  // Resumen inline — visible en ambos pasos
+  const comisionInfo = metodoPago==="Terminal" && !esCortes ? comisionTerminal(total) : null;
+
+  const resumenJSX = (
+    <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:14,marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div className="display" style={{fontSize:36,color:ORANGE,lineHeight:.85}}>#{padNum(numeroPedido)}</div>
+        <div className="display" style={{fontSize:36,color:esCortes?"rgba(255,255,255,.5)":ORANGE,lineHeight:.85}}>{esCortes?"Cortesía":fmt(total)}</div>
+      </div>
+      {items.map((it,i) => (
+        <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:5}}>
+          <span style={{color:"rgba(255,255,255,.85)",flex:1,minWidth:0,paddingRight:8}}>
+            {it.tipo==="especial" ? ("✏️ " + it.descripcion) :
+              (it.producto.emoji + " " + it.producto.nombre.split(" ").pop() + ((it.sabores||[]).length>0?" · "+it.sabores.join("/"):"") + (it.cucharon?" 🥄":""))}
+          </span>
+          <span style={{fontWeight:700,color:esCortes?"rgba(255,255,255,.4)":ORANGE,flexShrink:0}}>{esCortes?"$0":fmt(calcItemTotal(it))}</span>
+        </div>
+      ))}
+      {comisionInfo && (
+        <div style={{marginTop:8,padding:"7px 10px",background:"rgba(234,91,29,.14)",borderRadius:8,fontSize:11,color:ORANGE,fontWeight:700}}>
+          💳 Comisión -{fmt(comisionInfo.total)} · Recibes {fmt(comisionInfo.neto)}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="slide">
-      <button className="btn" onClick={onBack} style={{background:"none",color:"rgba(255,255,255,.6)",fontSize:13,fontWeight:600,marginBottom:14,padding:0}}>← Volver al pedido</button>
+    <div className="slide" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 130px)",overflow:"hidden"}}>
+      <button className="btn" onClick={paso===2?()=>setPaso(1):onBack} style={{background:"none",color:"rgba(255,255,255,.6)",fontSize:13,fontWeight:600,marginBottom:10,padding:0,alignSelf:"flex-start"}}>
+        {paso===2?"← Volver":"← Volver al pedido"}
+      </button>
 
-      <div style={{display:"flex",alignItems:"flex-end",gap:14,marginBottom:18}}>
-        <div className="display" style={{fontSize:60,color:ORANGE,lineHeight:.85,letterSpacing:"-.04em"}}>#{padNum(numeroPedido)}</div>
-        <div style={{paddingBottom:6}}>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",textTransform:"uppercase"}}>Cobrar pedido</div>
-          <div className="serif-it" style={{fontSize:16,color:"rgba(255,255,255,.85)",marginTop:2}}>{items.length} ítem{items.length!==1?"s":""} · {fmt(total)}</div>
-        </div>
-      </div>
+      {/* Resumen siempre visible */}
+      {resumenJSX}
 
-      <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:10}}>RESUMEN</div>
-        {items.map((it,i) => (
-          <div key={i} style={{marginBottom:6}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
-              <span style={{color:"rgba(255,255,255,.85)"}}>
-                {it.tipo === "especial" ? `✏️ ${it.descripcion}` :
-                  <>{it.producto.emoji} {it.producto.nombre}{(it.sabores||[]).length>0 && <span style={{color:"rgba(255,255,255,.5)"}}> · {it.sabores.join("/")}</span>}{it.cucharon && <span style={{color:ORANGE}}> 🥄</span>}{toppingsLabel(it.toppings) && <span style={{color:ORANGE}}> {toppingsLabel(it.toppings)}</span>}</>}
-              </span>
-              <span style={{fontWeight:700,color:esCortes?"rgba(255,255,255,.5)":ORANGE}}>{esCortes?"$0":fmt(calcItemTotal(it))}</span>
+      {/* Contenido scrollable */}
+      <div style={{flex:1,overflowY:"auto",paddingBottom:20}}>
+
+        {paso === 1 && (
+          <>
+            {/* Nombre del cliente */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:6}}>¿A NOMBRE DE QUIÉN?</div>
+              <input className="input" placeholder="Toca aquí para escribir el nombre..." value={cliente}
+                onChange={e=>setCliente(e.target.value)}
+                style={{fontSize:16,padding:"13px 14px"}}/>
             </div>
-            {it.notas && <div style={{fontSize:11,color:"rgba(255,255,255,.5)",marginTop:1,paddingLeft:6,fontFamily:"'Instrument Serif',serif",fontStyle:"italic"}}>📝 {it.notas}</div>}
-          </div>
-        ))}
-        <div style={{borderTop:"1px solid rgba(255,255,255,.14)",marginTop:10,paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span className="display" style={{fontSize:14,letterSpacing:".05em"}}>TOTAL</span>
-          <span className="display" style={{fontSize:30,color:esCortes?"rgba(255,255,255,.5)":ORANGE,lineHeight:1}}>{esCortes?"Cortesía":fmt(total)}</span>
-        </div>
-        {metodoPago==="Terminal" && !esCortes && (() => {
-          const c = comisionTerminal(total);
-          return (
-            <div style={{marginTop:10,padding:"9px 11px",background:"rgba(234,91,29,.14)",borderRadius:10,fontSize:12,border:"1px solid rgba(234,91,29,.3)"}}>
-              <div style={{color:ORANGE,fontWeight:700}}>💳 Comisión Mercado Pago</div>
-              <div style={{color:"rgba(255,255,255,.6)",marginTop:2}}>3.5% = {fmt(c.comision)} + IVA {fmt(c.iva)}</div>
-              <div style={{color:ORANGE,fontWeight:800,marginTop:1}}>Comisión: -{fmt(c.total)} · Recibes: {fmt(c.neto)}</div>
-            </div>
-          );
-        })()}
-      </div>
 
-      <div style={{marginBottom:14}}>
-        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:6}}>¿A NOMBRE DE QUIÉN?</div>
-        <input className="input" placeholder="Nombre del cliente (opcional)" value={cliente} onChange={e=>setCliente(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} style={{fontSize:16,padding:"13px 14px"}} autoFocus/>
-      </div>
-
-      <div style={{marginBottom:18}}>
-        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:8}}>MÉTODO DE PAGO</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
-          {METODOS_PAGO.map(m => (
-            <button key={m} className="btn" onClick={()=>{btn();setMetodoPago(m);}}
-              style={{padding:"14px 8px",borderRadius:14,fontWeight:800,fontSize:13,border:"2px solid",
-                borderColor:metodoPago===m?(m==="Cortesía"?"#A78BFA":ORANGE):"rgba(255,255,255,.18)",
-                background:metodoPago===m?(m==="Cortesía"?"rgba(167,139,250,.18)":"rgba(234,91,29,.18)"):"rgba(255,255,255,.05)",
-                color:metodoPago===m?(m==="Cortesía"?"#A78BFA":ORANGE):"rgba(255,255,255,.7)",textAlign:"center",lineHeight:1.5}}>
-              <div style={{fontSize:22}}>{m==="Efectivo"?"💵":m==="Transferencia"?"📲":m==="Terminal"?"💳":"🎁"}</div>
-              <div className="display" style={{fontSize:13,marginTop:3,letterSpacing:".04em"}}>{m.toUpperCase()}</div>
-              {m==="Transferencia" && <div className="serif-it" style={{fontSize:13,marginTop:2,opacity:.7}}>queda como pendiente</div>}
-              {m==="Cortesía" && <div className="serif-it" style={{fontSize:13,marginTop:2,opacity:.7}}>se registra sin cobro</div>}
-              {m==="Terminal" && !esCortes && total>0 && <div className="serif-it" style={{fontSize:13,marginTop:2,opacity:.7}}>comisión -{fmt(comisionTerminal(total).total)}</div>}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {metodoPago === "Efectivo" && !esCortes && total > 0 && (
-        <div style={{marginBottom:14,background:"rgba(0,0,0,.22)",borderRadius:14,padding:14}}>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:8}}>¿CON CUÁNTO PAGÓ?</div>
-
-          {/* Pago exacto destacado */}
-          <button className="btn" onClick={()=>{btn();setMontoRecibido(String(total));}}
-            style={{width:"100%",padding:"14px 16px",borderRadius:12,fontWeight:900,fontSize:16,border:"2px solid",
-              borderColor:Number(montoRecibido)===total?ORANGE:"rgba(230,104,50,.55)",
-              background:Number(montoRecibido)===total?ORANGE:"rgba(230,104,50,.18)",
-              color:"white",fontFamily:"'Archivo Black',sans-serif",letterSpacing:".04em",marginBottom:10,textTransform:"uppercase"}}>
-            ✓ Pago exacto — {fmt(total)}
-          </button>
-
-          {/* Denominaciones >= total */}
-          {[50,100,200,500,1000].filter(v => v >= total).length > 0 && (
-            <>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:".06em",color:"rgba(255,255,255,.45)",marginBottom:6,textTransform:"uppercase"}}>Otras denominaciones</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:10}}>
-                {[50,100,200,500,1000].filter(v => v >= total).map(v => (
-                  <button key={v} className="btn" onClick={()=>{btn();setMontoRecibido(String(v));}}
-                    style={{padding:"10px 4px",borderRadius:10,fontWeight:900,fontSize:13,border:"2px solid",
-                      borderColor:Number(montoRecibido)===v?ORANGE:"rgba(255,255,255,.18)",
-                      background:Number(montoRecibido)===v?"rgba(230,104,50,.18)":"rgba(255,255,255,.05)",
-                      color:Number(montoRecibido)===v?ORANGE:"rgba(255,255,255,.85)",fontFamily:"'Archivo Black',sans-serif"}}>
-                    ${v}
+            {/* Método de pago */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:8}}>MÉTODO DE PAGO</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+                {METODOS_PAGO.map(m => (
+                  <button key={m} className="btn" onClick={()=>{btn();setMetodoPago(m);}}
+                    style={{padding:"14px 8px",borderRadius:14,fontWeight:800,fontSize:13,border:"2px solid",
+                      borderColor:metodoPago===m?(m==="Cortesía"?"#A78BFA":ORANGE):"rgba(255,255,255,.18)",
+                      background:metodoPago===m?(m==="Cortesía"?"rgba(167,139,250,.18)":"rgba(234,91,29,.18)"):"rgba(255,255,255,.05)",
+                      color:metodoPago===m?(m==="Cortesía"?"#A78BFA":ORANGE):"rgba(255,255,255,.7)",textAlign:"center",lineHeight:1.5}}>
+                    <div style={{fontSize:22}}>{m==="Efectivo"?"💵":m==="Transferencia"?"📲":m==="Terminal"?"💳":"🎁"}</div>
+                    <div className="display" style={{fontSize:13,marginTop:3}}>{m.toUpperCase()}</div>
+                    {m==="Transferencia"&&<div className="serif-it" style={{fontSize:12,marginTop:2,opacity:.7}}>pendiente de confirmación</div>}
+                    {m==="Cortesía"&&<div className="serif-it" style={{fontSize:12,marginTop:2,opacity:.7}}>sin cobro</div>}
                   </button>
                 ))}
               </div>
-            </>
-          )}
-
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:6}}>O ESCRIBE EL MONTO</div>
-          <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(255,255,255,.18)",padding:"4px 14px",marginBottom:10}}>
-            <span className="display" style={{fontSize:22,color:"rgba(255,255,255,.4)"}}>$</span>
-            <input type="number" placeholder="0" value={montoRecibido} onChange={e=>setMontoRecibido(e.target.value)}
-              style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:24,color:"white",padding:"8px 0"}}/>
-          </div>
-          {cambio !== null && (
-            <div style={{padding:"14px 16px",borderRadius:12,background:cambio===0?"rgba(34,197,94,.18)":"rgba(230,104,50,.18)",border:`1px solid ${cambio===0?"#22C55E":ORANGE}`,display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <span className="display" style={{fontSize:13,letterSpacing:".05em",color:cambio===0?"#4ADE80":ORANGE}}>{cambio===0?"PAGO EXACTO":"CAMBIO"}</span>
-              <span className="display" style={{fontSize:32,color:cambio===0?"#4ADE80":ORANGE,lineHeight:1}}>{fmt(cambio)}</span>
             </div>
-          )}
-          {montoRecibido !== "" && Number(montoRecibido) < total && (
-            <div style={{padding:"10px 14px",borderRadius:10,background:"rgba(230,104,50,.12)",fontSize:13,color:ORANGE,fontWeight:700,textAlign:"center"}}>⚠️ Monto insuficiente — falta {fmt(total - Number(montoRecibido))}</div>
-          )}
 
-          {/* Propina opcional */}
-          {cambio !== null && (
-            <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.1)"}}>
-              <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:6}}>¿DEJÓ PROPINA? (opcional)</div>
-              <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(255,255,255,.18)",padding:"4px 14px"}}>
-                <span className="display" style={{fontSize:18,color:"rgba(255,255,255,.4)"}}>$</span>
-                <input type="number" placeholder="0" value={propina} onChange={e=>setPropina(e.target.value)}
-                  style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:20,color:"white",padding:"6px 0"}}/>
+            {/* Botón siguiente */}
+            <button className="btn" onClick={()=>{btn();
+              if(metodoPago==="Efectivo"&&!esCortes) { setPaso(2); }
+              else onConfirm({montoRecibido:null,cambio:null,propina:0});
+            }} style={{width:"100%",background:esCortes?"linear-gradient(135deg,#7C3AED,#A78BFA)":ORANGE,color:"white",borderRadius:16,padding:18,fontSize:17,fontWeight:900,letterSpacing:".06em",textTransform:"uppercase",marginBottom:10}}>
+              {metodoPago==="Efectivo"&&!esCortes ? "Siguiente →" : esCortes ? "🎁 Registrar cortesía" : `✓ Confirmar — ${fmt(total)}`}
+            </button>
+          </>
+        )}
+
+        {paso === 2 && metodoPago === "Efectivo" && (
+          <>
+            <div style={{marginBottom:14,background:"rgba(0,0,0,.22)",borderRadius:14,padding:14}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:8}}>¿CON CUÁNTO PAGÓ?</div>
+              <button className="btn" onClick={()=>{btn();setMontoRecibido(String(total));}}
+                style={{width:"100%",padding:"14px 16px",borderRadius:12,fontWeight:900,fontSize:16,border:"2px solid",
+                  borderColor:Number(montoRecibido)===total?ORANGE:"rgba(230,104,50,.55)",
+                  background:Number(montoRecibido)===total?ORANGE:"rgba(230,104,50,.18)",
+                  color:"white",fontFamily:"'Archivo Black',sans-serif",letterSpacing:".04em",marginBottom:10,textTransform:"uppercase"}}>
+                ✓ Pago exacto — {fmt(total)}
+              </button>
+              {[50,100,200,500,1000].filter(v=>v>total).length>0&&(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:10}}>
+                  {[50,100,200,500,1000].filter(v=>v>total).map(v=>(
+                    <button key={v} className="btn" onClick={()=>{btn();setMontoRecibido(String(v));}}
+                      style={{padding:"10px 4px",borderRadius:10,fontWeight:900,fontSize:13,border:"2px solid",
+                        borderColor:Number(montoRecibido)===v?ORANGE:"rgba(255,255,255,.18)",
+                        background:Number(montoRecibido)===v?"rgba(230,104,50,.18)":"rgba(255,255,255,.05)",
+                        color:Number(montoRecibido)===v?ORANGE:"rgba(255,255,255,.85)",fontFamily:"'Archivo Black',sans-serif"}}>
+                      ${v}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(255,255,255,.18)",padding:"4px 14px",marginBottom:10}}>
+                <span className="display" style={{fontSize:22,color:"rgba(255,255,255,.4)"}}>$</span>
+                <input type="number" placeholder="otro monto..." value={montoRecibido} onChange={e=>setMontoRecibido(e.target.value)}
+                  style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:24,color:"white",padding:"8px 0"}}/>
               </div>
+              {cambio!==null&&(
+                <div style={{padding:"14px 16px",borderRadius:12,background:cambio===0?"rgba(34,197,94,.18)":"rgba(230,104,50,.18)",border:`1px solid ${cambio===0?"#22C55E":ORANGE}`,display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <span className="display" style={{fontSize:13,color:cambio===0?"#4ADE80":ORANGE}}>{cambio===0?"PAGO EXACTO":"CAMBIO"}</span>
+                  <span className="display" style={{fontSize:32,color:cambio===0?"#4ADE80":ORANGE,lineHeight:1}}>{fmt(cambio)}</span>
+                </div>
+              )}
+              {montoRecibido!==""&&Number(montoRecibido)<total&&(
+                <div style={{padding:"10px 14px",borderRadius:10,background:"rgba(230,104,50,.12)",fontSize:13,color:ORANGE,fontWeight:700,textAlign:"center"}}>⚠️ Falta {fmt(total-Number(montoRecibido))}</div>
+              )}
+              {cambio!==null&&(
+                <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.1)"}}>
+                  <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:6}}>¿DEJÓ PROPINA? (opcional)</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(255,255,255,.18)",padding:"4px 14px"}}>
+                    <span className="display" style={{fontSize:18,color:"rgba(255,255,255,.4)"}}>$</span>
+                    <input type="number" placeholder="0" value={propina} onChange={e=>setPropina(e.target.value)}
+                      style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:20,color:"white",padding:"6px 0"}}/>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+            <button className="btn" onClick={()=>onConfirm({montoRecibido:montoRecibido===""?null:Number(montoRecibido),cambio,propina:propina===""?0:Number(propina)})}
+              style={{width:"100%",background:ORANGE,color:"white",borderRadius:16,padding:18,fontSize:17,fontWeight:900,letterSpacing:".06em",textTransform:"uppercase",marginBottom:10}}>
+              ✓ Confirmar — {fmt(total)}
+            </button>
+          </>
+        )}
 
-      <button className="btn" onClick={()=>onConfirm({ montoRecibido: montoRecibido === "" ? null : Number(montoRecibido), cambio, propina: propina === "" ? 0 : Number(propina) })}
-        style={{width:"100%",background:esCortes?"linear-gradient(135deg,#7C3AED,#A78BFA)":ORANGE,color:"white",borderRadius:16,padding:18,fontSize:17,fontWeight:900,letterSpacing:".06em",textTransform:"uppercase"}}>
-        {esCortes?"🎁 Registrar cortesía":`✓ Confirmar — ${fmt(total)}`}
-      </button>
-      <button className="btn" onClick={onCancel} style={{width:"100%",background:"none",color:"rgba(255,255,255,.4)",fontSize:13,marginTop:10,padding:8,fontFamily:"'Instrument Serif',serif",fontStyle:"italic"}}>Cancelar todo</button>
+        <button className="btn" onClick={onCancel} style={{width:"100%",background:"none",color:"rgba(255,255,255,.4)",fontSize:13,padding:8,fontFamily:"'Instrument Serif',serif",fontStyle:"italic"}}>Cancelar todo</button>
+      </div>
     </div>
   );
 }
+  return (
 
-// ─── ITEM EDITOR ──────────────────────────────────────────────────────────────
+// ITEM EDITOR
 function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores = [], toppingsConfig = TOPPINGS_DEFAULT }) {
   // Detectar categoría automática según los sabores seleccionados
   const [sabores, setSabores] = useState(item?.sabores || []);
@@ -1061,7 +1107,7 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
           style={{width:"100%",padding:"12px",borderRadius:12,marginBottom:10,fontWeight:800,fontSize:14,border:"2px solid",
             borderColor:cucharon?ORANGE:CREMA_DARK,background:cucharon?"rgba(230,104,50,.12)":"white",color:cucharon?ORANGE_DARK:TEXT_DARK,textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:22}}>🥄</span>
-          <span>{esAgua ? "Más jugo extra" : "Cucharón extra"} {cucharon?`✓ incluido (+$${precioCup})`:`(+$${precioCup})`}</span>
+          <span>{esAgua ? "Más jugo extra" : "Cucharón extra"} {cucharon ? ("✓ incluido (+$" + precioCup + ")") : ("(+$" + precioCup + ")")}</span>
         </button>
           );
         })()}
@@ -1091,35 +1137,72 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
   );
 }
 
-// ─── VENTA LIBRE MODAL ────────────────────────────────────────────────────────
-function VentaLibreModal({ preciosLibres, item, onSave, onClose, btn, tipoNombre = "Venta libre", tipoEmoji = "✏️" }) {
+// VENTA LIBRE MODAL
+function VentaLibreModal({ preciosLibres, ventasLibres = [], item, onSave, onClose, btn }) {
   const [descripcion, setDescripcion] = useState(item?.descripcion || "");
   const [precio, setPrecio] = useState(item?.precio !== undefined ? String(item.precio) : "");
   const [notas, setNotas] = useState(item?.notas || "");
+  const [cantidad, setCantidad] = useState(item?.cantidad || 1);
+  const [itemPredefinido, setItemPredefinido] = useState(null); // item predefinido seleccionado
   const valido = descripcion.trim() && precio !== "" && Number(precio) >= 0;
+
+  const seleccionarPredefinido = (vl) => {
+    btn("check");
+    setItemPredefinido(vl.id);
+    setDescripcion(vl.nombre);
+    if (vl.precio) setPrecio(String(vl.precio));
+  };
+
+  const guardar = () => {
+    if (!valido) return;
+    // Si cantidad > 1, guardar múltiples items
+    const baseItem = { tipo:"especial", descripcion:descripcion.trim(), precio:Number(precio), notas:notas.trim() };
+    onSave(baseItem, cantidad);
+  };
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
       <div style={{background:CREMA,borderRadius:"24px 24px 0 0",width:"100%",padding:"22px 18px 36px",maxHeight:"92vh",overflowY:"auto",maxWidth:700,color:TEXT_DARK}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-          <div className="display" style={{fontSize:18,letterSpacing:".02em",display:"flex",alignItems:"center",gap:8}}>
-            <span>{tipoEmoji}</span><span>{tipoNombre.toUpperCase()}</span>
-          </div>
+          <div className="display" style={{fontSize:18,letterSpacing:".02em"}}>✏️ VENTA LIBRE</div>
           <button className="btn" onClick={onClose} style={{background:CREMA_DARK,color:TEXT_DARK,borderRadius:8,padding:"6px 12px",fontWeight:700}}>✕</button>
         </div>
-        <div className="serif-it" style={{fontSize:14,color:TEXT_MUTED,marginBottom:18}}>Describe lo que es y pon el precio.</div>
 
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6}}>¿QUÉ ES?</div>
-          <input className="input-light" placeholder="Ej: Cucharón suelto, vaso de hielo..." value={descripcion} onChange={e=>setDescripcion(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} autoFocus/>
+        {/* Items predefinidos */}
+        {ventasLibres.filter(vl => vl.nombre !== "Venta libre").length > 0 && (
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:8,textTransform:"uppercase"}}>Accesos rápidos</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+              {ventasLibres.filter(vl => vl.nombre !== "Venta libre").map(vl => (
+                <button key={vl.id} className="btn" onClick={()=>seleccionarPredefinido(vl)}
+                  style={{padding:"12px 14px",borderRadius:12,fontWeight:800,border:"2px solid",textAlign:"left",display:"flex",alignItems:"center",gap:10,
+                    borderColor:itemPredefinido===vl.id?ORANGE:CREMA_DARK,
+                    background:itemPredefinido===vl.id?"rgba(230,104,50,.12)":"white",
+                    color:TEXT_DARK}}>
+                  <span style={{fontSize:22}}>{vl.emoji}</span>
+                  <div>
+                    <div className="display" style={{fontSize:13,color:itemPredefinido===vl.id?ORANGE:TEXT_DARK}}>{vl.nombre.toUpperCase()}</div>
+                    {vl.precio && <div className="display" style={{fontSize:16,color:ORANGE}}>${vl.precio}</div>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Descripción */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6,textTransform:"uppercase"}}>¿Qué es?</div>
+          <input className="input-light" placeholder="Ej: Cucharón extra, vaso de hielo..." value={descripcion} onChange={e=>{setDescripcion(e.target.value);setItemPredefinido(null);}}/>
         </div>
 
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6}}>PRECIOS RÁPIDOS</div>
-          <div style={{display:"grid",gridTemplateColumns:`repeat(${preciosLibres.length},1fr)`,gap:7,marginBottom:10}}>
+        {/* Precios rápidos */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6,textTransform:"uppercase"}}>Precio</div>
+          <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(preciosLibres.length,5)},1fr)`,gap:6,marginBottom:8}}>
             {preciosLibres.map(p => (
               <button key={p} className="btn" onClick={()=>{btn();setPrecio(String(p));}}
-                style={{padding:"12px 4px",borderRadius:11,fontWeight:900,fontSize:16,border:"2px solid",
+                style={{padding:"10px 4px",borderRadius:10,fontWeight:900,fontSize:15,border:"2px solid",
                   borderColor:Number(precio)===p?ORANGE:CREMA_DARK,
                   background:Number(precio)===p?"rgba(234,91,29,.12)":"white",
                   color:Number(precio)===p?ORANGE:TEXT_DARK,fontFamily:"'Archivo Black',sans-serif"}}>
@@ -1127,22 +1210,38 @@ function VentaLibreModal({ preciosLibres, item, onSave, onClose, btn, tipoNombre
               </button>
             ))}
           </div>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6}}>O ESCRIBE UN PRECIO</div>
           <div style={{display:"flex",alignItems:"center",gap:6,background:"white",borderRadius:12,border:`1.5px solid ${CREMA_DARK}`,padding:"4px 14px"}}>
             <span className="display" style={{fontSize:24,color:ORANGE}}>$</span>
-            <input type="number" placeholder="0" value={precio} onChange={e=>setPrecio(e.target.value)}
+            <input type="number" placeholder="otro precio..." value={precio} onChange={e=>setPrecio(e.target.value)}
               style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:28,color:TEXT_DARK,padding:"8px 0"}}/>
           </div>
         </div>
 
-        <div style={{marginBottom:18}}>
-          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6}}>📝 NOTAS (opcional)</div>
+        {/* Cantidad tipo carrito */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:8,textTransform:"uppercase"}}>Cantidad</div>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <button className="btn" onClick={()=>{btn();setCantidad(Math.max(1,cantidad-1));}}
+              style={{width:44,height:44,borderRadius:12,background:CREMA_DARK,color:TEXT_DARK,fontSize:22,fontWeight:900,border:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+            <div className="display" style={{fontSize:36,color:ORANGE,flex:1,textAlign:"center",lineHeight:1}}>{cantidad}</div>
+            <button className="btn" onClick={()=>{btn();setCantidad(cantidad+1);}}
+              style={{width:44,height:44,borderRadius:12,background:ORANGE,color:"white",fontSize:22,fontWeight:900,border:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+          </div>
+          {cantidad > 1 && precio && (
+            <div className="serif-it" style={{fontSize:14,color:TEXT_MUTED,textAlign:"center",marginTop:6}}>
+              {cantidad} × {fmt(Number(precio))} = <span style={{color:ORANGE,fontWeight:700}}>{fmt(cantidad*Number(precio))}</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:6,textTransform:"uppercase"}}>📝 Notas (opcional)</div>
           <textarea className="textarea-light" rows={2} placeholder="Cualquier indicación..." value={notas} onChange={e=>setNotas(e.target.value)}/>
         </div>
 
-        <button className="btn" disabled={!valido} onClick={() => onSave({ tipo:"especial", descripcion:descripcion.trim(), precio:Number(precio), notas:notas.trim() })}
+        <button className="btn" disabled={!valido} onClick={guardar}
           style={{width:"100%",background:valido?ORANGE:CREMA_DARK,color:valido?"white":TEXT_MUTED,borderRadius:14,padding:15,fontSize:16,fontWeight:900,letterSpacing:".05em",textTransform:"uppercase"}}>
-          {valido?`✓ Agregar — ${fmt(Number(precio))}`:"Completa los campos"}
+          {valido ? (cantidad>1 ? `✓ Agregar ${cantidad}x — ${fmt(cantidad*Number(precio))}` : `✓ Agregar — ${fmt(Number(precio))}`) : "Completa los campos"}
         </button>
       </div>
     </div>
@@ -1456,12 +1555,19 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja = [], c
 
   const filtrar = () => {
     const hoy = todayKey();
-    let base = pedidos;
-    if (periodo === "hoy") base = base.filter(v => v.fecha.startsWith(hoy));
-    else if (periodo === "semana") { const d = new Date(); d.setDate(d.getDate()-7); base = base.filter(v => new Date(v.fecha) >= d); }
-    else if (periodo === "mes") base = base.filter(v => v.fecha.startsWith(hoy.slice(0,7)));
-    else if (periodo === "anio") base = base.filter(v => v.fecha.startsWith(hoy.slice(0,4)));
-    if (busqueda) base = base.filter(v => v.cliente.toLowerCase().includes(busqueda.toLowerCase()) || (v.cajero||"").toLowerCase().includes(busqueda.toLowerCase()));
+    let base = [...pedidos];
+    if (periodo === "hoy") base = base.filter(v => v.fecha && v.fecha.startsWith(hoy));
+    else if (periodo === "semana") {
+      const d = new Date(); d.setDate(d.getDate()-7); d.setHours(0,0,0,0);
+      base = base.filter(v => v.fecha && new Date(v.fecha) >= d);
+    }
+    else if (periodo === "mes") base = base.filter(v => v.fecha && v.fecha.startsWith(hoy.slice(0,7)));
+    else if (periodo === "anio") base = base.filter(v => v.fecha && v.fecha.startsWith(hoy.slice(0,4)));
+    // "todo" no filtra por fecha
+    if (busqueda.trim()) {
+      const b = busqueda.toLowerCase().trim();
+      base = base.filter(v => (v.cliente||"").toLowerCase().includes(b) || (v.cajero||"").toLowerCase().includes(b));
+    }
     return base;
   };
 
@@ -1792,12 +1898,19 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja = [], c
 }
 
 // ─── CIERRE TAB ───────────────────────────────────────────────────────────────
-function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = [], agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved }) {
+function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = [], agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados = {}, setInventariosGuardados, pinJefe }) {
   const [efectivoContado, setEfectivoContado] = useState("");
   const [notasTurno, setNotasTurno] = useState("");
   const [comprasFalta, setComprasFalta] = useState("");
   const [justificacionDescuadre, setJustificacionDescuadre] = useState("");
-  const [inventarioBotes, setInventarioBotes] = useState({});
+  const inventarioHoyGuardado = inventariosGuardados[todayKey()] || null;
+  const [inventarioBotes, setInventarioBotes] = useState(() => inventariosGuardados[todayKey()] || {});
+  const [inventarioGuardadoOk, setInventarioGuardadoOk] = useState(!!inventariosGuardados[todayKey()]);
+  const [verSeccionJefe, setVerSeccionJefe] = useState(false);
+  const [verificaciones, setVerificaciones] = useState(() => {
+    const hoy = todayKey();
+    return (inventariosGuardados[hoy+"_verificaciones"]) || { transferencias: "", terminal: "", notasJefe: "" };
+  });
   const [comprasNecesarias, setComprasNecesarias] = useState({});
   const [errorValidacion, setErrorValidacion] = useState("");
   const [verHistorial, setVerHistorial] = useState(false);
@@ -1888,6 +2001,12 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = []
     };
     agregarCierre(cierre);
     showSaved && showSaved("Cierre guardado");
+    // Ir a pantalla de inicio después de 1.5 segundos
+    setTimeout(() => {
+      save("rr_cajero_hoy", null);
+      save("rr_fondo_hoy", null);
+      window.location.reload();
+    }, 1500);
 
     // ─── Exportar Excel del día automáticamente ──────────────────────────
     try {
@@ -2110,20 +2229,32 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = []
 
       {/* INVENTARIO DE BOTES DE MERMELADA */}
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>📦 Inventario de botes</div>
-        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.6)",marginBottom:12}}>¿Cuántos botes quedan de cada sabor? Acepta decimales (ej: 1.25 = un bote y un cuarto)</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",textTransform:"uppercase"}}>📦 Inventario de botes</div>
+          {inventarioGuardadoOk && <div style={{fontSize:11,fontWeight:800,color:"#4ADE80",letterSpacing:".05em"}}>✓ GUARDADO</div>}
+        </div>
+        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.6)",marginBottom:12}}>¿Cuántos botes quedan de cada sabor? Acepta decimales (ej: 1.25)</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
           {[...SABORES_NATURALES, ...SABORES_AGUA].map(s => (
             <div key={s} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s}</span>
               <input type="number" step="0.25" placeholder="0" value={inventarioBotes[s] ?? ""} onChange={e=>{
                 const v = e.target.value;
                 setInventarioBotes(prev => { const next = {...prev}; if (v === "") delete next[s]; else next[s] = Number(v); return next; });
+                setInventarioGuardadoOk(false);
               }}
                 style={{width:60,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:8,padding:"5px 8px",color:"white",fontFamily:"'Archivo Black',sans-serif",fontSize:14,outline:"none",textAlign:"center"}}/>
             </div>
           ))}
         </div>
+        <button className="btn" onClick={()=>{
+          btn("success");
+          setInventariosGuardados && setInventariosGuardados(prev => ({...prev, [todayKey()]: inventarioBotes}));
+          setInventarioGuardadoOk(true);
+          showSaved && showSaved("Inventario guardado");
+        }} style={{width:"100%",background:"rgba(34,197,94,.18)",color:"#4ADE80",border:"1px solid rgba(34,197,94,.4)",borderRadius:12,padding:"12px",fontWeight:800,fontSize:14,letterSpacing:".04em",textTransform:"uppercase"}}>
+          💾 Guardar inventario
+        </button>
       </div>
 
       {/* LISTA DE COMPRAS (checkboxes) */}
@@ -2220,6 +2351,110 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = []
         style={{width:"100%",background:"#22C55E",color:"white",borderRadius:14,padding:14,fontSize:14,fontWeight:800,letterSpacing:".04em",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
         <span style={{fontSize:18}}>📲</span> Enviar resumen por WhatsApp
       </button>
+
+      {/* ─── SECCIÓN DEL JEFE: verificar transferencias y terminal ─── */}
+      <div style={{background:"linear-gradient(135deg,rgba(45,79,184,.4),rgba(45,79,184,.15))",border:"2px solid rgba(147,180,255,.35)",borderRadius:14,padding:14,marginBottom:10,marginTop:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:verSeccionJefe?12:0}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"#93B4FF",textTransform:"uppercase"}}>🔐 Verificación del jefe</div>
+            <div className="serif-it" style={{fontSize:13,color:"rgba(255,255,255,.5)",marginTop:2}}>Llena después de revisar banco y Mercado Pago</div>
+          </div>
+          <button className="btn" onClick={()=>{
+            if (!verSeccionJefe) {
+              // pedir PIN
+              const p = window.prompt("PIN del jefe:");
+              if (p !== pinJefe) { window.alert("PIN incorrecto"); return; }
+            }
+            setVerSeccionJefe(!verSeccionJefe);
+          }} style={{background:"rgba(147,180,255,.18)",color:"#93B4FF",border:"1px solid rgba(147,180,255,.35)",borderRadius:10,padding:"8px 14px",fontWeight:800,fontSize:12}}>
+            {verSeccionJefe?"Cerrar":"Abrir 🔐"}
+          </button>
+        </div>
+
+        {verSeccionJefe && (
+          <div>
+            {/* Resumen esperado */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+              <div style={{background:"rgba(0,0,0,.22)",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:4}}>📲 TRANSFERENCIAS ESPERADAS</div>
+                <div className="display" style={{fontSize:20,color:"#93B4FF"}}>{fmt(ventasTransfer)}</div>
+                {(() => {
+                  const pends = pedidos.filter(p => p.metodoPago==="Transferencia" && p.pagado && p.fecha.startsWith(todayKey()));
+                  return pends.length > 0 && (
+                    <div style={{marginTop:6}}>
+                      {pends.map(p => (
+                        <div key={p.id} className="serif-it" style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:1}}>
+                          {fmt(p.total)} · {p.cliente} · {p.cajero}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+              <div style={{background:"rgba(0,0,0,.22)",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:4}}>💳 TERMINAL ESPERADO</div>
+                <div className="display" style={{fontSize:20,color:"#A78BFA"}}>{fmt(ventasTerminal)}</div>
+                {(() => {
+                  const pends = pedidos.filter(p => p.metodoPago==="Terminal" && p.pagado && p.fecha.startsWith(todayKey()));
+                  return pends.length > 0 && (
+                    <div style={{marginTop:6}}>
+                      {pends.map(p => (
+                        <div key={p.id} className="serif-it" style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:1}}>
+                          {fmt(p.total)} · {p.cliente} · {p.cajero}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Campos de verificación */}
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase"}}>¿Cuánto llegó en transferencias?</div>
+              <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(147,180,255,.3)",padding:"4px 14px"}}>
+                <span className="display" style={{fontSize:18,color:"rgba(255,255,255,.4)"}}>$</span>
+                <input type="number" placeholder="0" value={verificaciones.transferencias}
+                  onChange={e=>setVerificaciones(v=>({...v,transferencias:e.target.value}))}
+                  style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:22,color:"white",padding:"8px 0"}}/>
+              </div>
+              {verificaciones.transferencias !== "" && (
+                <div className="serif-it" style={{fontSize:13,marginTop:4,color:Number(verificaciones.transferencias)===ventasTransfer?"#4ADE80":ORANGE}}>
+                  {Number(verificaciones.transferencias)===ventasTransfer ? "✓ Cuadra perfecto" : Number(verificaciones.transferencias)>ventasTransfer ? `↑ Llegó ${fmt(Number(verificaciones.transferencias)-ventasTransfer)} de más` : `↓ Falta ${fmt(ventasTransfer-Number(verificaciones.transferencias))}`}
+                </div>
+              )}
+            </div>
+
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase"}}>¿Cuánto llegó en terminal (Mercado Pago)?</div>
+              <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(167,139,250,.3)",padding:"4px 14px"}}>
+                <span className="display" style={{fontSize:18,color:"rgba(255,255,255,.4)"}}>$</span>
+                <input type="number" placeholder="0" value={verificaciones.terminal}
+                  onChange={e=>setVerificaciones(v=>({...v,terminal:e.target.value}))}
+                  style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:22,color:"white",padding:"8px 0"}}/>
+              </div>
+              {verificaciones.terminal !== "" && (
+                <div className="serif-it" style={{fontSize:13,marginTop:4,color:Number(verificaciones.terminal)===ventasTerminal?"#4ADE80":ORANGE}}>
+                  {Number(verificaciones.terminal)===ventasTerminal ? "✓ Cuadra perfecto" : Number(verificaciones.terminal)>ventasTerminal ? `↑ Llegó ${fmt(Number(verificaciones.terminal)-ventasTerminal)} de más` : `↓ Falta ${fmt(ventasTerminal-Number(verificaciones.terminal))}`}
+                </div>
+              )}
+            </div>
+
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:6,textTransform:"uppercase"}}>Notas del jefe</div>
+              <textarea className="textarea" rows={2} placeholder="Discrepancias, observaciones, etc." value={verificaciones.notasJefe} onChange={e=>setVerificaciones(v=>({...v,notasJefe:e.target.value}))}/>
+            </div>
+
+            <button className="btn" onClick={()=>{
+              btn("success");
+              setInventariosGuardados && setInventariosGuardados(prev => ({...prev, [todayKey()+"_verificaciones"]: verificaciones}));
+              showSaved && showSaved("Verificación guardada");
+            }} style={{width:"100%",background:"rgba(147,180,255,.25)",color:"#93B4FF",border:"1px solid rgba(147,180,255,.4)",borderRadius:12,padding:12,fontWeight:800,fontSize:13,textTransform:"uppercase",letterSpacing:".04em"}}>
+              💾 Guardar verificación
+            </button>
+          </div>
+        )}
+      </div>
 
       <button className="btn" onClick={()=>{btn();setVerHistorial(!verHistorial);}}
         style={{width:"100%",background:"transparent",border:"1px solid rgba(255,255,255,.18)",color:"rgba(255,255,255,.6)",borderRadius:12,padding:12,fontSize:13,fontWeight:700}}>
@@ -2502,7 +2737,10 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
         <button className="btn" disabled={borrarTexto !== "BORRAR"} onClick={()=>{
           if(borrarTexto !== "BORRAR") return;
           btn();
-          setPedidos([]); setBorrarTexto("");
+          setPedidos([]);
+          save("rr_gastos_caja", []); // también limpiar gastos
+          save("rr_fondo_hoy", null); // resetear fondo para que pida nuevo
+          setBorrarTexto("");
           showSaved && showSaved("Historial borrado");
         }}
           style={{background:borrarTexto==="BORRAR"?"rgba(230,104,50,.4)":"rgba(230,104,50,.1)",color:borrarTexto==="BORRAR"?"white":"rgba(230,104,50,.5)",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:13,border:`1px solid ${borrarTexto==="BORRAR"?ORANGE:"rgba(230,104,50,.3)"}`,width:"100%"}}>
@@ -2799,7 +3037,7 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn }) {
 }
 
 // ─── HISTORIAL TAB ────────────────────────────────────────────────────────────
-function HistorialTab({ pedidos, btn }) {
+function HistorialTab({ pedidos, btn, actualizarPedido }) {
   const entregados = pedidos.filter(p => p.entregado).sort((a,b) => b.fecha.localeCompare(a.fecha));
   const hoy = entregados.filter(p => p.fecha.startsWith(todayKey()));
   const anteriores = entregados.filter(p => !p.fecha.startsWith(todayKey()));
@@ -2812,30 +3050,53 @@ function HistorialTab({ pedidos, btn }) {
     </div>
   );
 
-  const PedidoCard = ({ p }) => (
-    <div style={{background:"white",borderRadius:14,padding:"14px 16px",marginBottom:8,border:`1px solid ${CREMA_DARK}`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:6}}>
-        <div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span className="display" style={{fontSize:22,color:ORANGE,lineHeight:.85}}>#{padNum(p.numero||0)}</span>
-            {p.esCortes && <span style={{background:"rgba(124,58,237,.15)",color:"#7C3AED",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:800}}>🎁 CORTESÍA</span>}
+  const PedidoCard = ({ p }) => {
+    const [editandoPago, setEditandoPago] = useState(false);
+    const metodoIcon = (m) => m==="Efectivo"?"💵":m==="Transferencia"?"📲":m==="Terminal"?"💳":"🎁";
+    return (
+      <div style={{background:"white",borderRadius:14,padding:"14px 16px",marginBottom:8,border:`1px solid ${CREMA_DARK}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:6}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span className="display" style={{fontSize:22,color:ORANGE,lineHeight:.85}}>#{padNum(p.numero||0)}</span>
+              {p.esCortes && <span style={{background:"rgba(124,58,237,.15)",color:"#7C3AED",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:800}}>🎁 CORTESÍA</span>}
+            </div>
+            <div className="display" style={{fontSize:16,color:TEXT_DARK,marginTop:4}}>{(p.cliente||"SIN NOMBRE").toUpperCase()}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4,flexWrap:"wrap"}}>
+              <div className="serif-it" style={{fontSize:13,color:TEXT_MUTED}}>🕐 {fmtTime(p.fecha)} · {p.cajero||"?"}</div>
+              <button className="btn" onClick={()=>setEditandoPago(!editandoPago)}
+                style={{display:"inline-flex",alignItems:"center",gap:4,background:editandoPago?"rgba(230,104,50,.12)":CREMA_DARK,color:editandoPago?ORANGE:TEXT_MUTED,borderRadius:8,padding:"3px 9px",fontSize:12,fontWeight:700,border:editandoPago?`1px solid ${ORANGE}`:"none"}}>
+                {metodoIcon(p.metodoPago)} {p.metodoPago} {editandoPago?"✕":"✏️"}
+              </button>
+            </div>
           </div>
-          <div className="display" style={{fontSize:16,color:TEXT_DARK,marginTop:4,letterSpacing:".01em"}}>{(p.cliente||"SIN NOMBRE").toUpperCase()}</div>
-          <div className="serif-it" style={{fontSize:13,color:TEXT_MUTED,marginTop:1}}>
-            🕐 {fmtTime(p.fecha)} · {p.cajero||"?"} · {p.metodoPago}
+          <div className="display" style={{fontSize:22,color:p.esCortes?"#7C3AED":ORANGE,lineHeight:1}}>
+            {p.esCortes?"🎁":fmt(p.total)}
           </div>
         </div>
-        <div className="display" style={{fontSize:22,color:p.esCortes?"#7C3AED":ORANGE,lineHeight:1}}>
-          {p.esCortes?"🎁":fmt(p.total)}
-        </div>
+        {editandoPago && (
+          <div style={{background:CREMA_DARK,borderRadius:10,padding:10,marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:800,color:TEXT_MUTED,marginBottom:6,letterSpacing:".08em",textTransform:"uppercase"}}>Cambiar método de pago</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+              {METODOS_PAGO.map(m => (
+                <button key={m} className="btn" onClick={()=>{ btn(); actualizarPedido(p.id, {metodoPago:m, pagado: m!=="Transferencia"}); setEditandoPago(false); }}
+                  style={{padding:"8px 4px",borderRadius:9,fontSize:11,fontWeight:800,textAlign:"center",border:"2px solid",
+                    borderColor:p.metodoPago===m?ORANGE:CREMA_DARK,background:p.metodoPago===m?"rgba(230,104,50,.12)":"white",
+                    color:p.metodoPago===m?ORANGE:TEXT_DARK}}>
+                  <div style={{fontSize:14}}>{metodoIcon(m)}</div>{m}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {p.items.map((it,i) => (
+          <div key={i} style={{fontSize:13,color:TEXT_MUTED,marginTop:2,paddingLeft:4}} className="serif-it">
+            {it.tipo==="especial" ? `✏️ ${it.descripcion}` : `${it.producto?.nombre} — ${(it.sabores||[]).join(", ")||"sin sabor"}${it.cucharon?" + cucharón":""}`}
+          </div>
+        ))}
       </div>
-      {p.items.map((it,i) => (
-        <div key={i} style={{fontSize:13,color:TEXT_MUTED,marginTop:2,paddingLeft:4}} className="serif-it">
-          {it.tipo==="especial" ? `✏️ ${it.descripcion}` : `${it.producto?.nombre} — ${(it.sabores||[]).join(", ")||"sin sabor"}${it.cucharon?" + cucharón":""}`}
-        </div>
-      ))}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="slide">
