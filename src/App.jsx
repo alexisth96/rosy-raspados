@@ -593,7 +593,9 @@ function FondoCajaScreen({ cajero, onConfirm, onChangeUser }) {
 }
 
 // ─── POS TAB ──────────────────────────────────────────────────────────────────
-function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig = TOPPINGS_DEFAULT, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos = [], requirePin, showSaved }) {
+function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos, requirePin, showSaved }) {
+  const _pedidosPOS = pedidos || [];
+  const _toppingsConfigPOS = toppingsConfig || TOPPINGS_DEFAULT;
   const [items, setItems] = useState(() => load("rr_items_temp", []));
   const [editIdx, setEditIdx] = useState(null);
   const [showVentaLibre, setShowVentaLibre] = useState(false);
@@ -607,7 +609,7 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig = TOPPI
   // Calcular top 3 sabores del último mes
   const topSabores = (() => {
     const haceMes = new Date(); haceMes.setMonth(haceMes.getMonth() - 1);
-    const recientes = pedidos.filter(p => new Date(p.fecha) >= haceMes);
+    const recientes = _pedidosPOS.filter(p => new Date(p.fecha) >= haceMes);
     const allSabores = recientes.flatMap(p => (p.items||[]).filter(it => it.tipo !== "especial").flatMap(it => it.sabores || []));
     if (allSabores.length < 30) return [];
     const conteo = {};
@@ -964,12 +966,16 @@ function PagoStep({ items, total, esCortes, cliente, setCliente, metodoPago, set
   return (
 
 // ITEM EDITOR
-function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores = [], toppingsConfig = TOPPINGS_DEFAULT }) {
+function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores, toppingsConfig }) {
+  const _topSabores = topSabores || [];
+  const _toppingsConfigIE = toppingsConfig || TOPPINGS_DEFAULT;
   // Detectar categoría automática según los sabores seleccionados
   const [sabores, setSabores] = useState(item?.sabores || []);
   const [cucharon, setCucharon] = useState(item?.cucharon || false);
   const [notas, setNotas] = useState(item?.notas || "");
   const [toppings, setToppings] = useState(item?.toppings || { chamoy: false, tajin: false, crema: false });
+  const topSabores = _topSabores;
+  const toppingsConfig = _toppingsConfigIE;
   const togTopping = (k) => { btn("check"); setToppings(prev => ({ ...prev, [k]: !prev[k] })); };
 
   // Auto-detectar categoría por sabores seleccionados
@@ -1138,7 +1144,8 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 }
 
 // VENTA LIBRE MODAL
-function VentaLibreModal({ preciosLibres, ventasLibres = [], item, onSave, onClose, btn }) {
+function VentaLibreModal({ preciosLibres, ventasLibres, item, onSave, onClose, btn }) {
+  const _ventasLibres = ventasLibres || [];
   const [descripcion, setDescripcion] = useState(item?.descripcion || "");
   const [precio, setPrecio] = useState(item?.precio !== undefined ? String(item.precio) : "");
   const [notas, setNotas] = useState(item?.notas || "");
@@ -1169,11 +1176,11 @@ function VentaLibreModal({ preciosLibres, ventasLibres = [], item, onSave, onClo
         </div>
 
         {/* Items predefinidos */}
-        {ventasLibres.filter(vl => vl.nombre !== "Venta libre").length > 0 && (
+        {_ventasLibres.filter(vl => vl.nombre !== "Venta libre").length > 0 && (
           <div style={{marginBottom:14}}>
             <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:8,textTransform:"uppercase"}}>Accesos rápidos</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
-              {ventasLibres.filter(vl => vl.nombre !== "Venta libre").map(vl => (
+              {_ventasLibres.filter(vl => vl.nombre !== "Venta libre").map(vl => (
                 <button key={vl.id} className="btn" onClick={()=>seleccionarPredefinido(vl)}
                   style={{padding:"12px 14px",borderRadius:12,fontWeight:800,border:"2px solid",textAlign:"left",display:"flex",alignItems:"center",gap:10,
                     borderColor:itemPredefinido===vl.id?ORANGE:CREMA_DARK,
@@ -1249,11 +1256,13 @@ function VentaLibreModal({ preciosLibres, ventasLibres = [], item, onSave, onClo
 }
 
 // ─── COLA TAB ─────────────────────────────────────────────────────────────────
-function ColaTab({ enCola, actualizarPedido, btn, variant = "dark", requirePin, showSaved, productos = [] }) {
+function ColaTab({ enCola, actualizarPedido, btn, variant, requirePin, showSaved, productos }) {
+  const _variantCola = variant || "dark";
+  const _productosCola = productos || [];
   const [confirmId, setConfirmId] = useState(null);
   const [editandoId, setEditandoId] = useState(null); // id pedido a editar
   const [editandoItemIdx, setEditandoItemIdx] = useState(null); // índice del item
-  const isLight = variant === "light";
+  const isLight = _variantCola === "light";
 
   const colors = isLight
     ? { text:TEXT_DARK, muted:TEXT_MUTED, card:"white", cardSig:"white", border:CREMA_DARK, borderSig:ORANGE, sig:ORANGE, divider:CREMA_DARK }
@@ -1548,7 +1557,9 @@ function VasosTab({ vasosExtra, agregarVasos, btn }) {
 }
 
 // ─── REPORTES TAB ─────────────────────────────────────────────────────────────
-function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja = [], cierresSemana = [], btn, requirePin }) {
+function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja, cierresSemana, btn, requirePin }) {
+  const _gastosCajaR = gastosCaja || [];
+  const _cierresSemanaR = cierresSemana || [];
   const [periodo, setPeriodo] = useState("hoy");
   const [busqueda, setBusqueda] = useState("");
   const [editPagoId, setEditPagoId] = useState(null);
@@ -1898,7 +1909,9 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja = [], c
 }
 
 // ─── CIERRE TAB ───────────────────────────────────────────────────────────────
-function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja = [], agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados = {}, setInventariosGuardados, pinJefe }) {
+function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados, setInventariosGuardados, pinJefe }) {
+  const _gastosCajaC = gastosCaja || [];
+  const _inventariosG = inventariosGuardados || {};
   const [efectivoContado, setEfectivoContado] = useState("");
   const [notasTurno, setNotasTurno] = useState("");
   const [comprasFalta, setComprasFalta] = useState("");
@@ -2808,7 +2821,8 @@ function PinModal({ label, pinJefe, onSuccess, onCancel, btn }) {
 }
 
 // ─── GASTOS TAB ───────────────────────────────────────────────────────────────
-function GastosTab({ gastosCaja = [], agregarGasto, requirePin, btn, showSaved }) {
+function GastosTab({ gastosCaja, agregarGasto, requirePin, btn, showSaved }) {
+  const _gastosCajaG = gastosCaja || [];
   const [monto, setMonto] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [verHistorial, setVerHistorial] = useState(false);
