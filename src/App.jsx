@@ -82,6 +82,17 @@ const padNum = (n) => String(n).padStart(3, "0");
 
 function calcItemTotal(it) {
   if (!it) return 0;
+  const cant = it.cantidad || 1;
+  if (it.tipo === "especial") return (Number(it.precio) || 0) * cant;
+  const esAgua = it.producto?.categoria === "agua";
+  const precioExtra = esAgua ? EXTRA_SABOR_AGUA : EXTRA_SABOR_PRECIO;
+  const precioCucharon = esAgua ? CUCHARON_AGUA : CUCHARON_PRECIO;
+  const extra = Math.max(0, (it.sabores||[]).length - 2) * precioExtra;
+  const unitario = (it.producto?.precio || 0) + extra + (it.cucharon ? precioCucharon : 0);
+  return unitario * cant;
+}
+function calcItemUnitario(it) {
+  if (!it) return 0;
   if (it.tipo === "especial") return Number(it.precio) || 0;
   const esAgua = it.producto?.categoria === "agua";
   const precioExtra = esAgua ? EXTRA_SABOR_AGUA : EXTRA_SABOR_PRECIO;
@@ -237,6 +248,8 @@ export default function App() {
   const [pinJefe, setPinJefe]           = useState(() => load("rr_pin_jefe", PIN_DEFAULT));
   const [toppingsConfig, setToppingsConfig] = useState(() => load("rr_toppings", TOPPINGS_DEFAULT));
   const [inventariosGuardados, setInventariosGuardados] = useState(() => load("rr_inventarios", {}));
+  const [saboresNat, setSaboresNat] = useState(() => load("rr_sabores_nat", SABORES_NATURALES));
+  const [saboresAgua, setSaboresAgua] = useState(() => load("rr_sabores_agua", SABORES_AGUA));
   const [gastosCaja, setGastosCaja]     = useState(() => load("rr_gastos_caja", []));
   const [cierresSemana, setCierresSemana] = useState(() => load("rr_cierres_semana", []));
   const [tab, setTab] = useState("pos");
@@ -259,6 +272,8 @@ export default function App() {
   useEffect(() => save("rr_pin_jefe", pinJefe), [pinJefe]);
   useEffect(() => save("rr_toppings", toppingsConfig), [toppingsConfig]);
   useEffect(() => save("rr_inventarios", inventariosGuardados), [inventariosGuardados]);
+  useEffect(() => save("rr_sabores_nat", saboresNat), [saboresNat]);
+  useEffect(() => save("rr_sabores_agua", saboresAgua), [saboresAgua]);
   useEffect(() => save("rr_gastos_caja", gastosCaja), [gastosCaja]);
   useEffect(() => save("rr_cierres_semana", cierresSemana), [cierresSemana]);
 
@@ -384,7 +399,7 @@ export default function App() {
           <>
             <div className="split-pos">
               <div className="left-col" style={{display: subTab === "cola" ? "none" : "block", boxSizing:"border-box"}}>
-                <POSTab productos={productos} preciosLibres={preciosLibres} ventasLibres={ventasLibres} toppingsConfig={toppingsConfig} agregarPedido={agregarPedido} cajeroActivo={cajeroActivo} btn={btn} numeroPedido={numeroPedido} pedidos={pedidos} requirePin={requirePin} showSaved={showSaved}/>
+                <POSTab productos={productos} preciosLibres={preciosLibres} ventasLibres={ventasLibres} toppingsConfig={toppingsConfig} saboresNat={saboresNat} saboresAgua={saboresAgua} agregarPedido={agregarPedido} cajeroActivo={cajeroActivo} btn={btn} numeroPedido={numeroPedido} pedidos={pedidos} requirePin={requirePin} showSaved={showSaved}/>
               </div>
               {subTab === "cola" && window.innerWidth < 900 && (
                 <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section">
@@ -410,11 +425,11 @@ export default function App() {
             <ColaTab enCola={enCola} actualizarPedido={actualizarPedido} btn={btn} variant="light" requirePin={requirePin} showSaved={showSaved} productos={productos}/>
           </div>
         )}
-        {tab === "reportes" && <div style={{padding:"20px"}}><ReportesTab pedidos={pedidos} actualizarPedido={actualizarPedido} vasosExtra={vasosExtra} gastosCaja={gastosCaja} cierresSemana={cierresSemana} btn={btn} requirePin={requirePin}/></div>}
+        {tab === "reportes" && <div style={{background:"#F5F0E8",minHeight:"calc(100vh - 90px)",padding:"20px 24px",color:"#0F1A3D"}} className="cream-section"><ReportesTab pedidos={pedidos} actualizarPedido={actualizarPedido} vasosExtra={vasosExtra} gastosCaja={gastosCaja} cierresSemana={cierresSemana} btn={btn} requirePin={requirePin}/></div>}
         {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido}/></div>}
-        {tab === "gastos"   && <div style={{padding:"20px"}}><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
-        {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe}/></div>}
-        {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
+        {tab === "gastos"   && <div style={{background:"#F5F0E8",minHeight:"calc(100vh - 90px)",padding:"20px 24px",color:"#0F1A3D"}} className="cream-section"><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
+        {tab === "cierre"   && <div style={{background:"#F5F0E8",minHeight:"calc(100vh - 90px)",padding:"20px 24px",color:"#0F1A3D"}} className="cream-section"><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe} saboresNat={saboresNat} saboresAgua={saboresAgua}/></div>}
+        {tab === "config"   && <div style={{background:"#F5F0E8",minHeight:"calc(100vh - 90px)",padding:"20px 24px",color:"#0F1A3D"}} className="cream-section"><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} saboresNat={saboresNat} setSaboresNat={setSaboresNat} saboresAgua={saboresAgua} setSaboresAgua={setSaboresAgua} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
       </div>
     </div>
   );
@@ -604,7 +619,7 @@ function FondoCajaScreen({ cajero, onConfirm, onChangeUser }) {
 }
 
 // ─── POS TAB ──────────────────────────────────────────────────────────────────
-function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig: toppingsConfigProp2, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos: pedidosProp, requirePin, showSaved }) {
+function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig: toppingsConfigProp2, saboresNat, saboresAgua, agregarPedido, cajeroActivo, btn, numeroPedido, pedidos: pedidosProp, requirePin, showSaved }) {
   const pedidos = pedidosProp || [];
   const toppingsConfig = toppingsConfigProp2 || TOPPINGS_DEFAULT;
   const [items, setItems] = useState(() => load("rr_items_temp", []));
@@ -715,8 +730,16 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig: toppin
         {items.map((it, idx) => (
           <ItemRow key={idx} item={it} idx={idx}
             onEdit={() => { btn(); setEditIdx(idx); }}
-            onRemove={() => { btn(); setItems(items.filter((_,i) => i !== idx)); }}
-            onDuplicate={() => { btn("check"); setItems([...items, {...it}]); }}
+            onRemove={() => {
+              btn();
+              const cant = (it.cantidad || 1) - 1;
+              if (cant <= 0) setItems(items.filter((_,i) => i !== idx));
+              else setItems(items.map((x,i) => i===idx ? {...x, cantidad:cant} : x));
+            }}
+            onAdd={() => {
+              btn("check");
+              setItems(items.map((x,i) => i===idx ? {...x, cantidad:(x.cantidad||1)+1} : x));
+            }}
           />
         ))}
 
@@ -737,12 +760,12 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig: toppin
         )}
 
         {editIdx !== null && editIdx?.kind !== "new-prod" && typeof editIdx === "number" && items[editIdx]?.tipo !== "especial" && (
-          <ItemEditor productos={productos} item={items[editIdx]} topSabores={topSabores} toppingsConfig={toppingsConfig}
+          <ItemEditor productos={productos} item={items[editIdx]} topSabores={topSabores} toppingsConfig={toppingsConfig} saboresNat={saboresNat||SABORES_NATURALES} saboresAgua={saboresAgua||SABORES_AGUA}
             onSave={it => { btn("success"); setItems(items.map((x,i) => i === editIdx ? it : x)); setEditIdx(null); }}
             onClose={() => { btn(); setEditIdx(null); }} btn={btn}/>
         )}
         {editIdx !== null && editIdx?.kind === "new-prod" && (
-          <ItemEditor productos={productos} initialProd={editIdx.prod} topSabores={topSabores} toppingsConfig={toppingsConfig}
+          <ItemEditor productos={productos} initialProd={editIdx.prod} topSabores={topSabores} toppingsConfig={toppingsConfig} saboresNat={saboresNat||SABORES_NATURALES} saboresAgua={saboresAgua||SABORES_AGUA}
             onSave={it => { btn("success"); setItems([...items, it]); setEditIdx(null); }}
             onClose={() => { btn(); setEditIdx(null); }} btn={btn}/>
         )}
@@ -780,8 +803,9 @@ function POSTab({ productos, preciosLibres, ventasLibres, toppingsConfig: toppin
 }
 
 // ─── ITEM ROW ─────────────────────────────────────────────────────────────────
-function ItemRow({ item, onEdit, onRemove, onDuplicate }) {
+function ItemRow({ item, onEdit, onRemove, onAdd }) {
   const isEsp = item.tipo === "especial";
+  const cant = item.cantidad || 1;
   return (
     <div style={{background:CREMA,borderRadius:14,padding:"12px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
       <div style={{flex:1,minWidth:0}}>
@@ -810,19 +834,22 @@ function ItemRow({ item, onEdit, onRemove, onDuplicate }) {
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:6}}>
-        {/* Controles tipo carrito */}
+        {/* Controles tipo carrito con cantidad */}
         <div style={{display:"flex",alignItems:"center",background:"white",border:`2px solid ${CREMA_DARK}`,borderRadius:10,overflow:"hidden"}}>
           <button className="btn" onClick={onRemove}
             style={{width:34,height:36,background:"none",color:ORANGE_DARK,fontSize:20,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>
             −
           </button>
-          <span className="display" style={{fontSize:14,color:TEXT_DARK,minWidth:16,textAlign:"center",padding:"0 2px"}}>1</span>
-          <button className="btn" onClick={onDuplicate}
+          <span className="display" style={{fontSize:15,color:TEXT_DARK,minWidth:cant>1?24:16,textAlign:"center",padding:"0 4px",color:cant>1?ORANGE:TEXT_DARK}}>{cant}</span>
+          <button className="btn" onClick={onAdd}
             style={{width:34,height:36,background:"none",color:COBALT,fontSize:20,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>
             +
           </button>
         </div>
-        <div className="display" style={{fontSize:20,color:ORANGE,lineHeight:1,minWidth:38,textAlign:"right"}}>{fmt(calcItemTotal(item))}</div>
+        <div style={{textAlign:"right"}}>
+          <div className="display" style={{fontSize:20,color:ORANGE,lineHeight:1}}>{fmt(calcItemTotal(item))}</div>
+          {cant > 1 && <div style={{fontSize:10,color:TEXT_MUTED,fontWeight:600}}>{cant}×{fmt(calcItemUnitario(item))}</div>}
+        </div>
         <button className="btn" onClick={onEdit} style={{background:CREMA_DARK,color:TEXT_DARK,borderRadius:7,padding:"5px 9px",fontSize:12,fontWeight:700}}>✏️</button>
       </div>
     </div>
@@ -976,9 +1003,11 @@ function PagoStep({ items, total, esCortes, cliente, setCliente, metodoPago, set
 }
 
 // ITEM EDITOR
-function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores: topSaboresProp, toppingsConfig: toppingsConfigProp }) {
+function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSabores: topSaboresProp, toppingsConfig: toppingsConfigProp, saboresNat: sabNatProp, saboresAgua: sabAguaProp }) {
   const topSabores = topSaboresProp || [];
   const toppingsConfig = toppingsConfigProp || TOPPINGS_DEFAULT;
+  const saboresNaturales = sabNatProp || SABORES_NATURALES;
+  const saboresDeAgua = sabAguaProp || SABORES_AGUA;
   // Detectar categoría automática según los sabores seleccionados
   const [sabores, setSabores] = useState(item?.sabores || []);
   const [cucharon, setCucharon] = useState(item?.cucharon || false);
@@ -988,7 +1017,7 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
   // Auto-detectar categoría por sabores seleccionados
   const categoriaSabores = sabores.length > 0
-    ? (sabores.some(s => SABORES_AGUA.includes(s)) ? "agua" : "natural")
+    ? (sabores.some(s => saboresDeAgua.includes(s)) ? "agua" : "natural")
     : null;
 
   // Filtrar productos compatibles con los sabores elegidos
@@ -1009,14 +1038,14 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
   const toggleSabor = (s) => {
     btn("check");
-    const esAgua = SABORES_AGUA.includes(s);
-    const esNatural = SABORES_NATURALES.includes(s);
+    const esAgua = saboresDeAgua.includes(s);
+    const esNatural = saboresNaturales.includes(s);
     // No mezclar categorías
     if (sabores.includes(s)) {
       setSabores(sabores.filter(x => x !== s));
     } else {
-      const hayAgua = sabores.some(x => SABORES_AGUA.includes(x));
-      const hayNatural = sabores.some(x => SABORES_NATURALES.includes(x));
+      const hayAgua = sabores.some(x => saboresDeAgua.includes(x));
+      const hayNatural = sabores.some(x => saboresNaturales.includes(x));
       if ((esAgua && hayNatural) || (esNatural && hayAgua)) return; // no mezclar
       setSabores([...sabores, s]);
     }
@@ -1044,7 +1073,7 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
         {/* Top 3 sabores */}
         {topSabores.length > 0 && (() => {
-          const topRel = topSabores.filter(s => !categoriaSabores || (categoriaSabores==="agua" ? SABORES_AGUA.includes(s) : SABORES_NATURALES.includes(s)));
+          const topRel = topSabores.filter(s => !categoriaSabores || (categoriaSabores==="agua" ? saboresDeAgua.includes(s) : saboresNaturales.includes(s)));
           if (topRel.length === 0) return null;
           return (
             <>
@@ -1066,7 +1095,7 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
         {/* Naturales */}
         <div style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:TEXT_MUTED,marginBottom:5}}>NATURALES</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:10}}>
-          {SABORES_NATURALES.map(s => {
+          {saboresNaturales.map(s => {
             const disabled = categoriaSabores === "agua";
             return (
               <button key={s} className="btn" onClick={()=>!disabled && toggleSabor(s)}
@@ -1084,7 +1113,7 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
         {/* Agua */}
         <div style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:TEXT_MUTED,marginBottom:5}}>AGUA</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:16}}>
-          {SABORES_AGUA.map(s => {
+          {saboresDeAgua.map(s => {
             const disabled = categoriaSabores === "natural";
             return (
               <button key={s} className="btn" onClick={()=>!disabled && toggleSabor(s)}
@@ -1300,8 +1329,13 @@ function ColaTab({ enCola, actualizarPedido, btn, variant: variantProp, requireP
       </div>
 
       {enCola.map((p, idx) => {
-        const hechas = p.items.filter(it => it.hecha).length;
-        const totalI = p.items.length;
+        const totalI = p.items.reduce((s, it) => s + (it.cantidad || 1), 0);
+        const hechas = p.items.reduce((s, it) => {
+          const cant = it.cantidad || 1;
+          let n = it.hecha ? 1 : 0;
+          for (let ci = 1; ci < cant; ci++) { if (it[`hecha_${ci}`]) n++; }
+          return s + n;
+        }, 0);
         const todasHechas = hechas === totalI;
         const esPrimero = idx === 0;
         return (
@@ -1340,47 +1374,64 @@ function ColaTab({ enCola, actualizarPedido, btn, variant: variantProp, requireP
             </div>
 
             <div style={{padding:"6px 16px"}}>
-              {p.items.map((it,i) => {
+              {p.items.flatMap((it,i) => {
                 const isEsp = it.tipo === "especial";
-                return (
-                  <button key={i} className="btn" onClick={()=>toggleHecha(p.id,i)}
-                    style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"11px 0",borderBottom:i<p.items.length-1?`1px solid ${colors.divider}`:"none",background:"none",textAlign:"left"}}>
-                    <div style={{width:26,height:26,borderRadius:8,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",
-                      background:it.hecha?"#22C55E":(isLight?"white":"rgba(255,255,255,.06)"),
-                      border:`2px solid ${it.hecha?"#22C55E":(isLight?CREMA_DARK:"rgba(255,255,255,.2)")}`,marginTop:1}}>
-                      {it.hecha && <span style={{color:"white",fontSize:14,fontWeight:900}}>✓</span>}
-                    </div>
-                    <div style={{flex:1,opacity:it.hecha?.4:1,minWidth:0}}>
-                      {isEsp ? (
-                        <>
-                          <div className="display" style={{fontSize:16,textDecoration:it.hecha?"line-through":"none",color:colors.text,letterSpacing:".01em"}}>
-                            ✏️ {(it.descripcion||"VENTA LIBRE").toUpperCase()}
-                          </div>
-                          <div style={{display:"inline-block",marginTop:2,fontSize:9,fontWeight:800,letterSpacing:".1em",color:isLight?COBALT:"rgba(167,194,255,.9)",background:isLight?"rgba(30,63,170,.1)":"rgba(255,255,255,.06)",borderRadius:4,padding:"1px 6px",textTransform:"uppercase"}}>
-                            Especial · {fmt(it.precio||0)}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Tamaño en chico arriba */}
-                          <div style={{fontSize:10,fontWeight:800,letterSpacing:".1em",color:colors.muted,textTransform:"uppercase",marginBottom:2}}>
-                            {it.producto?.nombre?.split(" ").pop() || ""}
-                            {it.cucharon && <span style={{color:ORANGE}}> · 🥄</span>}
-                          </div>
-                          {/* Sabores en GRANDE */}
-                          <div className="display" style={{fontSize:16,textDecoration:it.hecha?"line-through":"none",color:it.hecha?colors.muted:colors.text,letterSpacing:".01em",lineHeight:1.15}}>
-                            {(it.sabores||[]).length > 0 ? it.sabores.join(" · ").toUpperCase() : "SIN SABOR"}
-                          </div>
-                          {/* Toppings y notas abajo */}
-                          {toppingsLabel(it.toppings) && (
-                            <div style={{fontSize:13,marginTop:3,fontWeight:700,color:isLight?"#9333EA":"#C084FC",letterSpacing:".02em"}}>{toppingsLabel(it.toppings, null, "full")}</div>
-                          )}
-                          {it.notas && <div className="serif-it" style={{fontSize:14,color:ORANGE,marginTop:3}}>📝 {it.notas}</div>}
-                        </>
-                      )}
-                    </div>
-                  </button>
-                );
+                const cant = it.cantidad || 1;
+                // Expandir: si cantidad > 1, mostrar N checkboxes independientes
+                return Array.from({length: cant}, (_,ci) => {
+                  const subKey = `${i}_${ci}`;
+                  const hechaKey = ci === 0 ? "hecha" : `hecha_${ci}`;
+                  const estaHecha = ci === 0 ? it.hecha : it[hechaKey];
+                  const toggleEsta = () => {
+                    btn("check");
+                    const pedido = enCola.find(x => x.id === p.id);
+                    if (!pedido) return;
+                    const newItems = pedido.items.map((x, idx) => {
+                      if (idx !== i) return x;
+                      if (ci === 0) return { ...x, hecha: !x.hecha };
+                      return { ...x, [hechaKey]: !x[hechaKey] };
+                    });
+                    actualizarPedido(p.id, { items: newItems });
+                  };
+                  return (
+                    <button key={subKey} className="btn" onClick={toggleEsta}
+                      style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"11px 0",borderBottom:`1px solid ${colors.divider}`,background:"none",textAlign:"left"}}>
+                      <div style={{width:26,height:26,borderRadius:8,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",
+                        background:estaHecha?"#22C55E":(isLight?"white":"rgba(255,255,255,.06)"),
+                        border:`2px solid ${estaHecha?"#22C55E":(isLight?CREMA_DARK:"rgba(255,255,255,.2)")}`,marginTop:1}}>
+                        {estaHecha && <span style={{color:"white",fontSize:14,fontWeight:900}}>✓</span>}
+                      </div>
+                      <div style={{flex:1,opacity:estaHecha?.4:1,minWidth:0}}>
+                        {isEsp ? (
+                          <>
+                            <div className="display" style={{fontSize:16,textDecoration:estaHecha?"line-through":"none",color:colors.text,letterSpacing:".01em"}}>
+                              ✏️ {(it.descripcion||"VENTA LIBRE").toUpperCase()}
+                              {cant > 1 && <span style={{fontSize:12,color:ORANGE,marginLeft:8}}>({ci+1}/{cant})</span>}
+                            </div>
+                            <div style={{display:"inline-block",marginTop:2,fontSize:9,fontWeight:800,letterSpacing:".1em",color:isLight?COBALT:"rgba(167,194,255,.9)",background:isLight?"rgba(30,63,170,.1)":"rgba(255,255,255,.06)",borderRadius:4,padding:"1px 6px",textTransform:"uppercase"}}>
+                              Especial · {fmt(it.precio||0)}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{fontSize:10,fontWeight:800,letterSpacing:".1em",color:colors.muted,textTransform:"uppercase",marginBottom:2}}>
+                              {it.producto?.nombre?.split(" ").pop() || ""}
+                              {it.cucharon && <span style={{color:ORANGE}}> · 🥄</span>}
+                              {cant > 1 && <span style={{color:ORANGE,marginLeft:6}}>({ci+1}/{cant})</span>}
+                            </div>
+                            <div className="display" style={{fontSize:16,textDecoration:estaHecha?"line-through":"none",color:estaHecha?colors.muted:colors.text,letterSpacing:".01em",lineHeight:1.15}}>
+                              {(it.sabores||[]).length > 0 ? it.sabores.join(" · ").toUpperCase() : "SIN SABOR"}
+                            </div>
+                            {toppingsLabel(it.toppings) && (
+                              <div style={{fontSize:13,marginTop:3,fontWeight:700,color:isLight?"#9333EA":"#C084FC",letterSpacing:".02em"}}>{toppingsLabel(it.toppings, null, "full")}</div>
+                            )}
+                            {it.notas && <div className="serif-it" style={{fontSize:14,color:ORANGE,marginTop:3}}>📝 {it.notas}</div>}
+                          </>
+                        )}
+                      </div>
+                    </button>
+                  );
+                });
               })}
             </div>
 
@@ -1912,7 +1963,7 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja: gastos
 }
 
 // ─── CIERRE TAB ───────────────────────────────────────────────────────────────
-function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gastosCajaPropC, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados: invGuardadosProp, setInventariosGuardados, pinJefe }) {
+function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gastosCajaPropC, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados: invGuardadosProp, setInventariosGuardados, pinJefe, saboresNat, saboresAgua }) {
   const gastosCaja = gastosCajaPropC || [];
   const inventariosGuardados = invGuardadosProp || {};
   const [efectivoContado, setEfectivoContado] = useState("");
@@ -2251,7 +2302,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
         </div>
         <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.6)",marginBottom:12}}>¿Cuántos botes quedan de cada sabor? Acepta decimales (ej: 1.25)</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-          {[...SABORES_NATURALES, ...SABORES_AGUA].map(s => (
+          {[...(saboresNat||SABORES_NATURALES), ...(saboresAgua||SABORES_AGUA)].map(s => (
             <div key={s} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s}</span>
               <input type="number" step="0.25" placeholder="0" value={inventarioBotes[s] ?? ""} onChange={e=>{
@@ -2530,7 +2581,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
 }
 
 // ─── CONFIG TAB ───────────────────────────────────────────────────────────────
-function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setCajeros, cajeroActivo, setCajeroActivo, preciosLibres, setPreciosLibres, ventasLibres, setVentasLibres, toppingsConfig, setToppingsConfig, pinJefe, setPinJefe, btn, requirePin, showSaved }) {
+function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setCajeros, cajeroActivo, setCajeroActivo, preciosLibres, setPreciosLibres, ventasLibres, setVentasLibres, toppingsConfig, setToppingsConfig, saboresNat, setSaboresNat, saboresAgua, setSaboresAgua, pinJefe, setPinJefe, btn, requirePin, showSaved }) {
   const [editProd, setEditProd] = useState(null);
   const [formProd, setFormProd] = useState({ nombre:"", precio:"", categoria:"natural", emoji:"🍧" });
   const [nuevoCajero, setNuevoCajero] = useState("");
@@ -2542,6 +2593,10 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
   const [pinChangeMsg, setPinChangeMsg] = useState("");
   const [borrarTexto, setBorrarTexto] = useState("");
   const [autoBackup, setAutoBackup] = useState(() => load("rr_auto_backup", false));
+  const [nuevoSaborNat, setNuevoSaborNat] = useState("");
+  const [nuevoSaborAgua, setNuevoSaborAgua] = useState("");
+  const _saboresNat = saboresNat || SABORES_NATURALES;
+  const _saboresAgua = saboresAgua || SABORES_AGUA;
 
   useEffect(() => save("rr_auto_backup", autoBackup), [autoBackup]);
 
@@ -2648,7 +2703,49 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
         <div className="serif-it" style={{fontSize:13,color:"rgba(255,255,255,.4)",marginTop:8}}>Escribe el PIN directo en el campo de cada cajero. Sin PIN, entra sin contraseña.</div>
       </div>
 
-      {/* TOPPINGS EDITABLES */}
+      {/* SABORES NATURALES */}
+      <div style={{background:"white",borderRadius:14,padding:16,marginBottom:14,border:`1px solid ${CREMA_DARK}`}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:4,textTransform:"uppercase"}}>🍧 Sabores naturales</div>
+        <div className="serif-it" style={{fontSize:14,color:TEXT_MUTED,marginBottom:10}}>Estos sabores cuestan $65 chico / $80 grande</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+          {_saboresNat.map((s,i) => (
+            <div key={i} style={{display:"flex",alignItems:"center",gap:4,background:CREMA,borderRadius:8,padding:"5px 10px",border:`1px solid ${CREMA_DARK}`}}>
+              <span style={{fontSize:13,fontWeight:700,color:TEXT_DARK}}>{s}</span>
+              <button className="btn" onClick={()=>{btn();setSaboresNat && setSaboresNat(_saboresNat.filter((_,j)=>j!==i));}}
+                style={{background:"none",color:TEXT_MUTED,fontSize:12,fontWeight:700,padding:"0 2px",lineHeight:1}}>✕</button>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <input className="input-light" placeholder="Nuevo sabor natural..." value={nuevoSaborNat} onChange={e=>setNuevoSaborNat(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&nuevoSaborNat.trim()){btn();setSaboresNat&&setSaboresNat([..._saboresNat,nuevoSaborNat.trim()]);setNuevoSaborNat("");}}}/>
+          <button className="btn" onClick={()=>{if(nuevoSaborNat.trim()){btn();setSaboresNat&&setSaboresNat([..._saboresNat,nuevoSaborNat.trim()]);setNuevoSaborNat("");}}}
+            style={{background:ORANGE,color:"white",borderRadius:10,padding:"0 18px",fontWeight:800,fontSize:18,flexShrink:0}}>+</button>
+        </div>
+      </div>
+
+      {/* SABORES DE AGUA */}
+      <div style={{background:"white",borderRadius:14,padding:16,marginBottom:14,border:`1px solid ${CREMA_DARK}`}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:4,textTransform:"uppercase"}}>💧 Sabores de agua</div>
+        <div className="serif-it" style={{fontSize:14,color:TEXT_MUTED,marginBottom:10}}>Estos sabores cuestan $25 chico / $35 grande</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+          {_saboresAgua.map((s,i) => (
+            <div key={i} style={{display:"flex",alignItems:"center",gap:4,background:"#EFF6FF",borderRadius:8,padding:"5px 10px",border:"1px solid #BFDBFE"}}>
+              <span style={{fontSize:13,fontWeight:700,color:TEXT_DARK}}>{s}</span>
+              <button className="btn" onClick={()=>{btn();setSaboresAgua&&setSaboresAgua(_saboresAgua.filter((_,j)=>j!==i));}}
+                style={{background:"none",color:TEXT_MUTED,fontSize:12,fontWeight:700,padding:"0 2px",lineHeight:1}}>✕</button>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <input className="input-light" placeholder="Nuevo sabor de agua..." value={nuevoSaborAgua} onChange={e=>setNuevoSaborAgua(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&nuevoSaborAgua.trim()){btn();setSaboresAgua&&setSaboresAgua([..._saboresAgua,nuevoSaborAgua.trim()]);setNuevoSaborAgua("");}}}/>
+          <button className="btn" onClick={()=>{if(nuevoSaborAgua.trim()){btn();setSaboresAgua&&setSaboresAgua([..._saboresAgua,nuevoSaborAgua.trim()]);setNuevoSaborAgua("");}}}
+            style={{background:COBALT,color:"white",borderRadius:10,padding:"0 18px",fontWeight:800,fontSize:18,flexShrink:0}}>+</button>
+        </div>
+      </div>
+
+      {/* TOPPINGS */}
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>🌶️ Toppings</div>
         <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>Cambia el emoji de cada topping. El nombre no se puede cambiar.</div>
