@@ -338,7 +338,7 @@ export default function App() {
     return <CajeroScreen cajeros={cajeros} onSelect={c => { btn("success"); setCajeroActivo(c); }} />;
   }
 
-  const fondoHoyValido = fondoCaja?.fecha? === todayKey(); // un solo fondo por día, compartido entre cajeros
+  const fondoHoyValido = fondoCaja?.fecha && localDateKey(fondoCaja.fecha) === todayKey(); // un solo fondo por día, compartido entre cajeros
   if (!fondoHoyValido) {
     return <FondoCajaScreen cajero={cajeroActivo} onConfirm={(monto) => {
       btn("success");
