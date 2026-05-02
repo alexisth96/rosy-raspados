@@ -2338,17 +2338,22 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
         </div>
         <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.6)",marginBottom:12}}>¿Cuántos botes quedan de cada sabor? Acepta decimales (ej: 1.25)</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-          {[...(saboresNat||SABORES_NATURALES), ...(saboresAgua||SABORES_AGUA)].map(s => (
-            <div key={s} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s}</span>
-              <input type="number" step="0.25" placeholder="0" value={inventarioBotes[s] ?? ""} onChange={e=>{
-                const v = e.target.value;
-                setInventarioBotes(prev => { const next = {...prev}; if (v === "") delete next[s]; else next[s] = Number(v); return next; });
-                setInventarioGuardadoOk(false);
-              }}
-                style={{width:60,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:8,padding:"5px 8px",color:"white",fontFamily:"'Archivo Black',sans-serif",fontSize:14,outline:"none",textAlign:"center"}}/>
-            </div>
-          ))}
+          {[...(saboresNat||SABORES_NATURALES), ...(saboresAgua||SABORES_AGUA)].map(sObj => {
+            const s = sObj?.nombre || sObj;
+            const emoji = sObj?.emoji || "";
+            return (
+              <div key={s} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+                {emoji && <span style={{fontSize:14}}>{emoji}</span>}
+                <span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s}</span>
+                <input type="number" step="0.25" placeholder="0" value={inventarioBotes[s] ?? ""} onChange={e=>{
+                  const v = e.target.value;
+                  setInventarioBotes(prev => { const next = {...prev}; if (v === "") delete next[s]; else next[s] = Number(v); return next; });
+                  setInventarioGuardadoOk(false);
+                }}
+                  style={{width:60,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:8,padding:"5px 8px",color:"white",fontFamily:"'Archivo Black',sans-serif",fontSize:14,outline:"none",textAlign:"center"}}/>
+              </div>
+            );
+          })}
         </div>
         <button className="btn" onClick={()=>{
           btn("success");
