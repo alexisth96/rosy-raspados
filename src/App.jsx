@@ -865,7 +865,7 @@ function ItemRow({ item, onEdit, onRemove, onAdd }) {
             style={{width:34,height:36,background:"none",color:ORANGE_DARK,fontSize:20,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>
             −
           </button>
-          <span className="display" style={{fontSize:15,color:TEXT_DARK,minWidth:cant>1?24:16,textAlign:"center",padding:"0 4px",color:cant>1?ORANGE:TEXT_DARK}}>{cant}</span>
+          <span className="display" style={{fontSize:15,color:cant>1?ORANGE:TEXT_DARK,minWidth:cant>1?24:16,textAlign:"center",padding:"0 4px"}}>{cant}</span>
           <button className="btn" onClick={onAdd}
             style={{width:34,height:36,background:"none",color:COBALT,fontSize:20,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>
             +
@@ -2049,9 +2049,6 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
   const sabsCriticos = Object.entries(inventarioBotes).filter(([_,v]) => v > 0 && v < UMBRAL_INVENTARIO_CRITICO);
 
   // Reporte semanal automático: solo si hoy es lunes (getDay() === 1)
-  const esLunes = new Date().getDay() === 1;
-  const resumenSemana = esLunes ? generarResumenSemana() : null;
-
   const generarResumenSemana = () => {
     // Calcular ventana: jueves anterior hasta hoy (lunes)
     const hoyDate = new Date(); hoyDate.setHours(0,0,0,0);
@@ -2074,6 +2071,9 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
     const cortTotal = semana.filter(p => p.esCortes).length;
     return { totalSemana: tot, efectivo:efe, transfer:tra, terminal:ter, pedidos:cobr.length, mejorDia: mejor, peorDia: peor, sabor: topSab, raspas, propinas: propTotal, cortesias: cortTotal };
   };
+
+  const esLunes = new Date().getDay() === 1;
+  const resumenSemana = esLunes ? generarResumenSemana() : null;
 
   const guardarCierre = () => {
     // Validaciones
