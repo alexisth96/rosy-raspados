@@ -96,6 +96,12 @@ const todayKey = () => {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 };
+// Extrae la fecha LOCAL de un ISO string guardado (evita bug UTC vs local)
+const localDateKey = (isoStr) => {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+};
 const uid = () => Math.random().toString(36).slice(2,9);
 const padNum = (n) => String(n).padStart(3, "0");
 
@@ -332,7 +338,7 @@ export default function App() {
     return <CajeroScreen cajeros={cajeros} onSelect={c => { btn("success"); setCajeroActivo(c); }} />;
   }
 
-  const fondoHoyValido = fondoCaja?.fecha?.startsWith(todayKey()); // un solo fondo por día, compartido entre cajeros
+  const fondoHoyValido = fondoCaja?.fecha? === todayKey(); // un solo fondo por día, compartido entre cajeros
   if (!fondoHoyValido) {
     return <FondoCajaScreen cajero={cajeroActivo} onConfirm={(monto) => {
       btn("success");
@@ -1566,7 +1572,7 @@ function VasosTab({ vasosExtra, agregarVasos, btn }) {
   const [cantidad, setCantidad] = useState(1);
   const [nota, setNota] = useState("");
   const [guardado, setGuardado] = useState(false);
-  const hoy = vasosExtra.filter(v => v.fecha.startsWith(todayKey()));
+  const hoy = vasosExtra.filter(v => localDateKey(v.fecha) === todayKey());
   const totalHoy = hoy.reduce((s,v) => s + v.cantidad, 0);
   const totalTotal = vasosExtra.reduce((s,v) => s + v.cantidad, 0);
 
@@ -1650,7 +1656,7 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja: gastos
   const filtrar = () => {
     const hoy = todayKey();
     let base = [...pedidos];
-    if (periodo === "hoy") base = base.filter(v => v.fecha && v.fecha.startsWith(hoy));
+    if (periodo === "hoy") base = base.filter(v => v.fecha && localDateKey(v.fecha) === hoy);
     else if (periodo === "semana") {
       const d = new Date(); d.setDate(d.getDate()-7); d.setHours(0,0,0,0);
       base = base.filter(v => v.fecha && new Date(v.fecha) >= d);
@@ -1714,7 +1720,7 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja: gastos
   vf.forEach(v => { const h = new Date(v.fecha).getHours(); byHora[h] = (byHora[h]||0) + 1; });
   const horaRank = Object.entries(byHora).sort((a,b) => b[1] - a[1]).slice(0,5);
 
-  const vasosFiltro = vasosExtra.filter(v => periodo === "hoy" ? v.fecha.startsWith(todayKey()) : true).reduce((s,v) => s + v.cantidad, 0);
+  const vasosFiltro = vasosExtra.filter(v => periodo === "hoy" ? localDateKey(v.fecha) === todayKey() : true).reduce((s,v) => s + v.cantidad, 0);
 
   const editPedido = editPagoId ? vf.find(p => p.id === editPagoId) : null;
 
@@ -1955,7 +1961,7 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja: gastos
         </div>
       )}
 
-      <button className="btn" onClick={() => { btn(); exportCSV(vf, vasosExtra.filter(v => periodo==="hoy"?v.fecha.startsWith(todayKey()):true), periodo); }}
+      <button className="btn" onClick={() => { btn(); exportCSV(vf, vasosExtra.filter(v => periodo==="hoy"?localDateKey(v.fecha) === todayKey():true), periodo); }}
         style={{width:"100%",background:"rgba(34,197,94,.15)",color:"#4ADE80",border:"2px solid rgba(34,197,94,.35)",borderRadius:14,padding:14,fontSize:14,fontWeight:900,marginBottom:6,letterSpacing:".05em",textTransform:"uppercase"}}>
         📥 Exportar CSV — {vf.length} pedidos
       </button>
@@ -2012,7 +2018,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
   const [verHistorial, setVerHistorial] = useState(false);
   const COMPRAS_LISTA = ["Servilletas","Popotes","Cucharitas","Tajín","Chamoy","Vasos chicos","Vasos grandes","Limones","Crema dulce"];
 
-  const hoy = pedidos.filter(v => v.fecha.startsWith(todayKey()));
+  const hoy = pedidos.filter(v => localDateKey(v.fecha) === todayKey());
   const hoyPagados = hoy.filter(p => p.pagado && !p.esCortes);
   const ventasEfectivo = hoyPagados.filter(p => p.metodoPago === "Efectivo").reduce((s,p) => s+p.total, 0);
   const ventasTransfer = hoyPagados.filter(p => p.metodoPago === "Transferencia").reduce((s,p) => s+p.total, 0);
@@ -2024,7 +2030,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
   const propinasDia = hoy.reduce((s,p) => s + (Number(p.propina) || 0), 0);
 
   // Gastos del día
-  const gastosHoy = (gastosCaja||[]).filter(g => g.fecha.startsWith(todayKey()));
+  const gastosHoy = (gastosCaja||[]).filter(g => localDateKey(g.fecha) === todayKey());
   const totalGastosHoy = gastosHoy.reduce((s,g) => s + Number(g.monto||0), 0);
 
   const fondoMonto = fondoCaja?.monto || 0;
@@ -2475,7 +2481,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
                 <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:4}}>📲 TRANSFERENCIAS ESPERADAS</div>
                 <div className="display" style={{fontSize:20,color:"#93B4FF"}}>{fmt(ventasTransfer)}</div>
                 {(() => {
-                  const pends = pedidos.filter(p => p.metodoPago==="Transferencia" && p.pagado && p.fecha.startsWith(todayKey()));
+                  const pends = pedidos.filter(p => p.metodoPago==="Transferencia" && p.pagado && localDateKey(p.fecha) === todayKey());
                   return pends.length > 0 && (
                     <div style={{marginTop:6}}>
                       {pends.map(p => (
@@ -2491,7 +2497,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
                 <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:4}}>💳 TERMINAL ESPERADO</div>
                 <div className="display" style={{fontSize:20,color:"#A78BFA"}}>{fmt(ventasTerminal)}</div>
                 {(() => {
-                  const pends = pedidos.filter(p => p.metodoPago==="Terminal" && p.pagado && p.fecha.startsWith(todayKey()));
+                  const pends = pedidos.filter(p => p.metodoPago==="Terminal" && p.pagado && localDateKey(p.fecha) === todayKey());
                   return pends.length > 0 && (
                     <div style={{marginTop:6}}>
                       {pends.map(p => (
@@ -2996,7 +3002,7 @@ function GastosTab({ gastosCaja: gastosCajaPropG, agregarGasto, requirePin, btn,
   const [verHistorial, setVerHistorial] = useState(false);
 
   const valido = monto !== "" && Number(monto) > 0 && descripcion.trim();
-  const hoy = gastosCaja.filter(g => g.fecha.startsWith(todayKey()));
+  const hoy = gastosCaja.filter(g => localDateKey(g.fecha) === todayKey());
   const totalHoy = hoy.reduce((s,g) => s + Number(g.monto||0), 0);
 
   const registrar = () => {
