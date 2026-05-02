@@ -2050,6 +2050,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
 
   // Reporte semanal automático: solo si hoy es lunes (getDay() === 1)
   const esLunes = new Date().getDay() === 1;
+  const resumenSemana = esLunes ? generarResumenSemana() : null;
 
   const generarResumenSemana = () => {
     // Calcular ventana: jueves anterior hasta hoy (lunes)
@@ -2404,34 +2405,27 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
       )}
 
       {/* Resumen semanal automático si es lunes */}
-      {esLunes && (() => {
-        const r = generarResumenSemana();
-        if (r.pedidos === 0) return null;
-        return (
-          <div style={{background:"linear-gradient(135deg,rgba(230,104,50,.18),rgba(230,104,50,.05))",border:`2px solid ${ORANGE}`,borderRadius:14,padding:16,marginBottom:14}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-              <span style={{fontSize:24}}>📅</span>
-              <div>
-                <div className="display" style={{fontSize:16,letterSpacing:".05em",color:"white"}}>RESUMEN DE LA SEMANA</div>
-                <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.6)"}}>jueves a lunes · se guarda al cerrar</div>
-              </div>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,paddingBottom:10,borderBottom:"1px solid rgba(255,255,255,.15)"}}>
-              <span className="serif-it" style={{fontSize:15}}>Total cobrado</span>
-              <span className="display" style={{fontSize:26,color:ORANGE}}>{fmtFull(r.totalSemana)}</span>
-            </div>
-            <div style={{fontSize:13,color:"rgba(255,255,255,.7)",lineHeight:1.7}}>
-              💵 Efectivo: <b>{fmt(r.efectivo)}</b> · 📲 Transfer.: <b>{fmt(r.transfer)}</b> · 💳 Terminal: <b>{fmt(r.terminal)}</b><br/>
-              📊 {r.pedidos} pedidos · 🍧 {r.raspas} raspas hechas<br/>
-              {r.mejorDia && <>🏆 Mejor día: <b>{fmtDate(r.mejorDia[0])}</b> ({fmt(r.mejorDia[1])})<br/></>}
-              {r.peorDia && r.peorDia !== r.mejorDia && <>🐢 Día más flojo: <b>{fmtDate(r.peorDia[0])}</b> ({fmt(r.peorDia[1])})<br/></>}
-              {r.sabor && <>⭐ Sabor estrella: <b>{r.sabor[0]}</b> ({r.sabor[1]} veces)<br/></>}
-              {r.propinas > 0 && <>💰 Propinas: <b>{fmt(r.propinas)}</b><br/></>}
-              {r.cortesias > 0 && <>🎁 Cortesías: <b>{r.cortesias}</b></>}
+      {esLunes && resumenSemana && resumenSemana.pedidos > 0 && (
+        <div style={{background:"linear-gradient(135deg,rgba(230,104,50,.18),rgba(230,104,50,.05))",border:`2px solid ${ORANGE}`,borderRadius:14,padding:16,marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            <span style={{fontSize:24}}>📅</span>
+            <div>
+              <div className="display" style={{fontSize:16,letterSpacing:".05em",color:"white"}}>RESUMEN DE LA SEMANA</div>
+              <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.6)"}}>jueves a lunes · se guarda al cerrar</div>
             </div>
           </div>
-        );
-      })()}
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,paddingBottom:10,borderBottom:"1px solid rgba(255,255,255,.15)"}}>
+            <span className="serif-it" style={{fontSize:15}}>Total cobrado</span>
+            <span className="display" style={{fontSize:26,color:ORANGE}}>{fmtFull(resumenSemana.totalSemana)}</span>
+          </div>
+          <div style={{fontSize:13,color:"rgba(255,255,255,.7)",lineHeight:1.7}}>
+            💵 Efectivo: <b>{fmt(resumenSemana.efectivo)}</b> · 📲 Transfer.: <b>{fmt(resumenSemana.transfer)}</b> · 💳 Terminal: <b>{fmt(resumenSemana.terminal)}</b><br/>
+            📊 {resumenSemana.pedidos} pedidos · 🍧 {resumenSemana.raspas} raspas hechas<br/>
+            {resumenSemana.mejorDia && <span>🏆 Mejor día: <b>{fmtDate(resumenSemana.mejorDia[0])}</b> ({fmt(resumenSemana.mejorDia[1])})<br/></span>}
+            {resumenSemana.sabor && <span>⭐ Sabor estrella: <b>{resumenSemana.sabor[0]}</b><br/></span>}
+          </div>
+        </div>
+      )}
 
       <button className="btn" onClick={guardarCierre}
         style={{width:"100%",background:ORANGE,color:"white",borderRadius:16,padding:18,fontSize:16,fontWeight:900,letterSpacing:".05em",textTransform:"uppercase",marginBottom:10}}>
@@ -2479,34 +2473,28 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
               <div style={{background:"rgba(0,0,0,.22)",borderRadius:10,padding:"10px 12px"}}>
                 <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:4}}>📲 TRANSFERENCIAS ESPERADAS</div>
                 <div className="display" style={{fontSize:20,color:"#93B4FF"}}>{fmt(ventasTransfer)}</div>
-                {(() => {
-                  const pends = pedidos.filter(p => p.metodoPago==="Transferencia" && p.pagado && localDateKey(p.fecha) === todayKey());
-                  return pends.length > 0 && (
-                    <div style={{marginTop:6}}>
-                      {pends.map(p => (
-                        <div key={p.id} className="serif-it" style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:1}}>
-                          {fmt(p.total)} · {p.cliente} · {p.cajero}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                {hoyPagados.filter(p=>p.metodoPago==="Transferencia").length > 0 && (
+                  <div style={{marginTop:6}}>
+                    {hoyPagados.filter(p=>p.metodoPago==="Transferencia").map(p => (
+                      <div key={p.id} className="serif-it" style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:1}}>
+                        {fmt(p.total)} · {p.cliente} · {p.cajero}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{background:"rgba(0,0,0,.22)",borderRadius:10,padding:"10px 12px"}}>
                 <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:4}}>💳 TERMINAL ESPERADO</div>
                 <div className="display" style={{fontSize:20,color:"#A78BFA"}}>{fmt(ventasTerminal)}</div>
-                {(() => {
-                  const pends = pedidos.filter(p => p.metodoPago==="Terminal" && p.pagado && localDateKey(p.fecha) === todayKey());
-                  return pends.length > 0 && (
-                    <div style={{marginTop:6}}>
-                      {pends.map(p => (
-                        <div key={p.id} className="serif-it" style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:1}}>
-                          {fmt(p.total)} · {p.cliente} · {p.cajero}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                {hoyPagados.filter(p=>p.metodoPago==="Terminal").length > 0 && (
+                  <div style={{marginTop:6}}>
+                    {hoyPagados.filter(p=>p.metodoPago==="Terminal").map(p => (
+                      <div key={p.id} className="serif-it" style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:1}}>
+                        {fmt(p.total)} · {p.cliente} · {p.cajero}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2534,26 +2522,18 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
                   onChange={e=>setVerificaciones(v=>({...v,terminal:e.target.value}))}
                   style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:22,color:"white",padding:"8px 0"}}/>
               </div>
-              {verificaciones.terminal !== "" && (() => {
-                const bruto = Number(verificaciones.terminal);
-                const com = bruto * COMISION_TERMINAL;
-                const iva = com * IVA_COMISION;
-                const neto = bruto - com - iva;
-                return (
-                  <div style={{marginTop:8,background:"rgba(167,139,250,.1)",borderRadius:10,padding:"10px 12px"}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,fontSize:12,marginBottom:6}}>
-                      <span style={{color:"rgba(255,255,255,.6)"}}>Comisión (3.5%)</span>
-                      <span style={{color:ORANGE,fontWeight:700,textAlign:"right"}}>-{fmt(com)}</span>
-                      <span style={{color:"rgba(255,255,255,.6)"}}>IVA comisión (16%)</span>
-                      <span style={{color:ORANGE,fontWeight:700,textAlign:"right"}}>-{fmt(iva)}</span>
-                      <span style={{color:"rgba(255,255,255,.9)",fontWeight:800}}>Lo que realmente recibes</span>
-                      <span className="display" style={{color:"#4ADE80",fontSize:16,textAlign:"right"}}>{fmt(neto)}</span>
-                    </div>
-                    <div className="serif-it" style={{fontSize:12,color:neto===ventasTerminal?"#4ADE80":ORANGE}}>
-                      {neto===ventasTerminal ? "✓ Cuadra con lo esperado" : neto>ventasTerminal ? ("Llegó " + fmt(neto-ventasTerminal) + " de más (neto)") : ("Falta " + fmt(ventasTerminal-neto) + " (neto)")}
-                    </div>
+              {verificaciones.terminal !== "" && (()=>{
+                const _br=Number(verificaciones.terminal), _com=_br*COMISION_TERMINAL, _iva=_com*IVA_COMISION, _net=_br-_com-_iva;
+                return <div style={{marginTop:8,background:"rgba(167,139,250,.1)",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,fontSize:12,marginBottom:6}}>
+                    <span style={{color:"rgba(255,255,255,.6)"}}>Comisión (3.5%)</span><span style={{color:ORANGE,fontWeight:700,textAlign:"right"}}>-{fmt(_com)}</span>
+                    <span style={{color:"rgba(255,255,255,.6)"}}>IVA comisión (16%)</span><span style={{color:ORANGE,fontWeight:700,textAlign:"right"}}>-{fmt(_iva)}</span>
+                    <span style={{color:"rgba(255,255,255,.9)",fontWeight:800}}>Lo que realmente recibes</span><span className="display" style={{color:"#4ADE80",fontSize:16,textAlign:"right"}}>{fmt(_net)}</span>
                   </div>
-                );
+                  <div className="serif-it" style={{fontSize:12,color:_net===ventasTerminal?"#4ADE80":ORANGE}}>
+                    {_net===ventasTerminal?"✓ Cuadra con lo esperado":_net>ventasTerminal?("Llegó "+fmt(_net-ventasTerminal)+" de más (neto)"):("Falta "+fmt(ventasTerminal-_net)+" (neto)")}
+                  </div>
+                </div>;
               })()}
             </div>
 
