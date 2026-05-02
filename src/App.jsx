@@ -453,7 +453,7 @@ export default function App() {
         {tab === "reportes" && <div style={{padding:"20px"}}><ReportesTab pedidos={pedidos} actualizarPedido={actualizarPedido} vasosExtra={vasosExtra} gastosCaja={gastosCaja} cierresSemana={cierresSemana} btn={btn} requirePin={requirePin}/></div>}
         {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido}/></div>}
         {tab === "gastos"   && <div style={{padding:"20px"}}><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
-        {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe} saboresNat={saboresNat} saboresAgua={saboresAgua}/></div>}
+        {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe} saboresNat={saboresNat} saboresAgua={saboresAgua} requirePin={requirePin}/></div>}
         {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} saboresNat={saboresNat} setSaboresNat={setSaboresNat} saboresAgua={saboresAgua} setSaboresAgua={setSaboresAgua} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
       </div>
     </div>
@@ -1998,7 +1998,7 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja: gastos
 }
 
 // ─── CIERRE TAB ───────────────────────────────────────────────────────────────
-function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gastosCajaPropC, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados: invGuardadosProp, setInventariosGuardados, pinJefe, saboresNat, saboresAgua }) {
+function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gastosCajaPropC, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados: invGuardadosProp, setInventariosGuardados, pinJefe, saboresNat, saboresAgua, requirePin }) {
   const gastosCaja = gastosCajaPropC || [];
   const inventariosGuardados = invGuardadosProp || {};
   const [efectivoContado, setEfectivoContado] = useState("");
@@ -2463,11 +2463,10 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
           </div>
           <button className="btn" onClick={()=>{
             if (!verSeccionJefe) {
-              // pedir PIN
-              const p = window.prompt("PIN del jefe:");
-              if (p !== pinJefe) { window.alert("PIN incorrecto"); return; }
+              requirePin && requirePin("Verificación del jefe", () => setVerSeccionJefe(true));
+            } else {
+              setVerSeccionJefe(false);
             }
-            setVerSeccionJefe(!verSeccionJefe);
           }} style={{background:"rgba(147,180,255,.18)",color:"#93B4FF",border:"1px solid rgba(147,180,255,.35)",borderRadius:10,padding:"8px 14px",fontWeight:800,fontSize:12}}>
             {verSeccionJefe?"Cerrar":"Abrir 🔐"}
           </button>
@@ -2744,7 +2743,7 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>🍧 Sabores naturales</div>
         <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>$65 chico / $80 grande · Cambia el emoji tocando el cuadrito</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
           {_saboresNat.map((sObj, i) => {
             const nombre = sObj?.nombre || sObj;
             const emoji = sObj?.emoji || "🍧";
@@ -2753,7 +2752,9 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
                 <input type="text" value={emoji} maxLength={2}
                   onChange={e=>{ const v=e.target.value; setSaboresNat&&setSaboresNat(_saboresNat.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),emoji:v}:x)); }}
                   style={{width:38,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
-                <span style={{flex:1,fontSize:13,fontWeight:700,color:"rgba(255,255,255,.85)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nombre}</span>
+                <input type="text" value={nombre}
+                  onChange={e=>{ const v=e.target.value; setSaboresNat&&setSaboresNat(_saboresNat.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),nombre:v}:x)); }}
+                  style={{flex:1,background:"transparent",border:"none",borderBottom:"1px solid rgba(255,255,255,.2)",color:"white",fontSize:13,fontWeight:700,outline:"none",padding:"2px 4px",minWidth:0}}/>
                 <button className="btn" onClick={()=>{btn();setSaboresNat&&setSaboresNat(_saboresNat.filter((_,j)=>j!==i));}}
                   style={{background:"rgba(234,91,29,.2)",color:ORANGE,borderRadius:7,padding:"4px 8px",fontWeight:700,fontSize:11,flexShrink:0}}>✕</button>
               </div>
@@ -2774,7 +2775,7 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>💧 Sabores de agua</div>
         <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>$25 chico / $35 grande · Cambia el emoji tocando el cuadrito</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
           {_saboresAgua.map((sObj, i) => {
             const nombre = sObj?.nombre || sObj;
             const emoji = sObj?.emoji || "💧";
@@ -2783,7 +2784,9 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
                 <input type="text" value={emoji} maxLength={2}
                   onChange={e=>{ const v=e.target.value; setSaboresAgua&&setSaboresAgua(_saboresAgua.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),emoji:v}:x)); }}
                   style={{width:38,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
-                <span style={{flex:1,fontSize:13,fontWeight:700,color:"rgba(255,255,255,.85)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nombre}</span>
+                <input type="text" value={nombre}
+                  onChange={e=>{ const v=e.target.value; setSaboresAgua&&setSaboresAgua(_saboresAgua.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),nombre:v}:x)); }}
+                  style={{flex:1,background:"transparent",border:"none",borderBottom:"1px solid rgba(255,255,255,.2)",color:"white",fontSize:13,fontWeight:700,outline:"none",padding:"2px 4px",minWidth:0}}/>
                 <button className="btn" onClick={()=>{btn();setSaboresAgua&&setSaboresAgua(_saboresAgua.filter((_,j)=>j!==i));}}
                   style={{background:"rgba(234,91,29,.2)",color:ORANGE,borderRadius:7,padding:"4px 8px",fontWeight:700,fontSize:11,flexShrink:0}}>✕</button>
               </div>
