@@ -27,8 +27,27 @@ const TEXT_DARK    = "#0F1A3D";
 const TEXT_MUTED   = "#5A6B8C";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const SABORES_NATURALES = ["Queso Crema","Frutos Rojos","Piña Colada","Tamarindo","Guayaba","Coco","Nuez","Cajeta","Fresa","Mango","Oreo","Piña"];
-const SABORES_AGUA      = ["Coco Azul","Limón"];
+const SABORES_NAT_DEFAULT = [
+  {id:"qc", nombre:"Queso Crema", emoji:"🧀"},
+  {id:"fr", nombre:"Frutos Rojos", emoji:"🍓"},
+  {id:"pc", nombre:"Piña Colada", emoji:"🍍"},
+  {id:"ta", nombre:"Tamarindo", emoji:"🟤"},
+  {id:"gu", nombre:"Guayaba", emoji:"🍐"},
+  {id:"co", nombre:"Coco", emoji:"🥥"},
+  {id:"nu", nombre:"Nuez", emoji:"🪨"},
+  {id:"ca", nombre:"Cajeta", emoji:"🍯"},
+  {id:"fs", nombre:"Fresa", emoji:"🍓"},
+  {id:"ma", nombre:"Mango", emoji:"🥭"},
+  {id:"or", nombre:"Oreo", emoji:"🍪"},
+  {id:"pi", nombre:"Piña", emoji:"🍍"},
+];
+// Compatibilidad: lista plana de nombres
+const SABORES_NATURALES = SABORES_NAT_DEFAULT.map(s => s.nombre);
+const SABORES_AGUA_DEFAULT = [
+  {id:"cb", nombre:"Coco Azul", emoji:"🥥"},
+  {id:"li", nombre:"Limón", emoji:"🍋"},
+];
+const SABORES_AGUA = SABORES_AGUA_DEFAULT.map(s => s.nombre);
 const EXTRA_SABOR_PRECIO = 5;
 const EXTRA_SABOR_AGUA = 10;
 const CUCHARON_PRECIO    = 15;
@@ -248,8 +267,8 @@ export default function App() {
   const [pinJefe, setPinJefe]           = useState(() => load("rr_pin_jefe", PIN_DEFAULT));
   const [toppingsConfig, setToppingsConfig] = useState(() => load("rr_toppings", TOPPINGS_DEFAULT));
   const [inventariosGuardados, setInventariosGuardados] = useState(() => load("rr_inventarios", {}));
-  const [saboresNat, setSaboresNat] = useState(() => load("rr_sabores_nat", SABORES_NATURALES));
-  const [saboresAgua, setSaboresAgua] = useState(() => load("rr_sabores_agua", SABORES_AGUA));
+  const [saboresNat, setSaboresNat] = useState(() => load("rr_sabores_nat", SABORES_NAT_DEFAULT));
+  const [saboresAgua, setSaboresAgua] = useState(() => load("rr_sabores_agua", SABORES_AGUA_DEFAULT));
   const [gastosCaja, setGastosCaja]     = useState(() => load("rr_gastos_caja", []));
   const [cierresSemana, setCierresSemana] = useState(() => load("rr_cierres_semana", []));
   const [tab, setTab] = useState("pos");
@@ -1022,7 +1041,7 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
   // Auto-detectar categoría por sabores seleccionados
   const categoriaSabores = sabores.length > 0
-    ? (sabores.some(s => saboresDeAgua.includes(s)) ? "agua" : "natural")
+    ? (sabores.some(s => saboresDeAgua.some(x=>(x?.nombre||x)===s)) ? "agua" : "natural")
     : null;
 
   // Filtrar productos compatibles con los sabores elegidos
@@ -1043,15 +1062,14 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
   const toggleSabor = (s) => {
     btn("check");
-    const esAgua = saboresDeAgua.includes(s);
-    const esNatural = saboresNaturales.includes(s);
-    // No mezclar categorías
+    const esAgua = saboresDeAgua.some(x => (x?.nombre||x) === s);
+    const esNatural = saboresNaturales.some(x => (x?.nombre||x) === s);
     if (sabores.includes(s)) {
       setSabores(sabores.filter(x => x !== s));
     } else {
-      const hayAgua = sabores.some(x => saboresDeAgua.includes(x));
-      const hayNatural = sabores.some(x => saboresNaturales.includes(x));
-      if ((esAgua && hayNatural) || (esNatural && hayAgua)) return; // no mezclar
+      const hayAgua = sabores.some(x => saboresDeAgua.some(o=>(o?.nombre||o)===x));
+      const hayNatural = sabores.some(x => saboresNaturales.some(o=>(o?.nombre||o)===x));
+      if ((esAgua && hayNatural) || (esNatural && hayAgua)) return;
       setSabores([...sabores, s]);
     }
   };
@@ -1078,7 +1096,7 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
 
         {/* Top 3 sabores */}
         {topSabores.length > 0 && (() => {
-          const topRel = topSabores.filter(s => !categoriaSabores || (categoriaSabores==="agua" ? saboresDeAgua.includes(s) : saboresNaturales.includes(s)));
+          const topRel = topSabores.filter(s => !categoriaSabores || (categoriaSabores==="agua" ? saboresDeAgua.some(x=>(x?.nombre||x)===s) : saboresNaturales.some(x=>(x?.nombre||x)===s)));
           if (topRel.length === 0) return null;
           return (
             <>
@@ -1100,16 +1118,19 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
         {/* Naturales */}
         <div style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:TEXT_MUTED,marginBottom:5}}>NATURALES</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:10}}>
-          {saboresNaturales.map(s => {
+          {saboresNaturales.map(sObj => {
+            const s = sObj?.nombre || sObj;
+            const emoji = sObj?.emoji || "";
             const disabled = categoriaSabores === "agua";
             return (
               <button key={s} className="btn" onClick={()=>!disabled && toggleSabor(s)}
-                style={{padding:"11px 4px",borderRadius:10,fontSize:12,fontWeight:700,textAlign:"center",border:"2px solid",
+                style={{padding:"10px 4px",borderRadius:10,fontWeight:700,textAlign:"center",border:"2px solid",
                   borderColor:sabores.includes(s)?ORANGE:CREMA_DARK,
                   background:sabores.includes(s)?"rgba(230,104,50,.12)":disabled?"#F5F5F5":"white",
                   color:sabores.includes(s)?ORANGE_DARK:disabled?"#CCC":TEXT_DARK,
                   opacity:disabled?0.4:1}}>
-                {s}
+                {emoji && <div style={{fontSize:18,marginBottom:2}}>{emoji}</div>}
+                <div style={{fontSize:11,fontWeight:700}}>{s}</div>
               </button>
             );
           })}
@@ -1118,16 +1139,19 @@ function ItemEditor({ productos, item, initialProd, onSave, onClose, btn, topSab
         {/* Agua */}
         <div style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:TEXT_MUTED,marginBottom:5}}>AGUA</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:16}}>
-          {saboresDeAgua.map(s => {
+          {saboresDeAgua.map(sObj => {
+            const s = sObj?.nombre || sObj;
+            const emoji = sObj?.emoji || "";
             const disabled = categoriaSabores === "natural";
             return (
               <button key={s} className="btn" onClick={()=>!disabled && toggleSabor(s)}
-                style={{padding:"11px 4px",borderRadius:10,fontSize:12,fontWeight:700,textAlign:"center",border:"2px solid",
+                style={{padding:"10px 4px",borderRadius:10,fontWeight:700,textAlign:"center",border:"2px solid",
                   borderColor:sabores.includes(s)?ORANGE:CREMA_DARK,
                   background:sabores.includes(s)?"rgba(230,104,50,.12)":disabled?"#F5F5F5":"white",
                   color:sabores.includes(s)?ORANGE_DARK:disabled?"#CCC":TEXT_DARK,
                   opacity:disabled?0.4:1}}>
-                {s}
+                {emoji && <div style={{fontSize:18,marginBottom:2}}>{emoji}</div>}
+                <div style={{fontSize:11,fontWeight:700}}>{s}</div>
               </button>
             );
           })}
@@ -2599,7 +2623,9 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
   const [borrarTexto, setBorrarTexto] = useState("");
   const [autoBackup, setAutoBackup] = useState(() => load("rr_auto_backup", false));
   const [nuevoSaborNat, setNuevoSaborNat] = useState("");
+  const [nuevoSaborNatEmoji, setNuevoSaborNatEmoji] = useState("");
   const [nuevoSaborAgua, setNuevoSaborAgua] = useState("");
+  const [nuevoSaborAguaEmoji, setNuevoSaborAguaEmoji] = useState("");
   const _saboresNat = saboresNat || SABORES_NATURALES;
   const _saboresAgua = saboresAgua || SABORES_AGUA;
 
@@ -2709,44 +2735,62 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
       </div>
 
       {/* SABORES NATURALES */}
-      <div style={{background:"white",borderRadius:14,padding:16,marginBottom:14,border:`1px solid ${CREMA_DARK}`}}>
-        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:4,textTransform:"uppercase"}}>🍧 Sabores naturales</div>
-        <div className="serif-it" style={{fontSize:14,color:TEXT_MUTED,marginBottom:10}}>Estos sabores cuestan $65 chico / $80 grande</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
-          {_saboresNat.map((s,i) => (
-            <div key={i} style={{display:"flex",alignItems:"center",gap:4,background:CREMA,borderRadius:8,padding:"5px 10px",border:`1px solid ${CREMA_DARK}`}}>
-              <span style={{fontSize:13,fontWeight:700,color:TEXT_DARK}}>{s}</span>
-              <button className="btn" onClick={()=>{btn();setSaboresNat && setSaboresNat(_saboresNat.filter((_,j)=>j!==i));}}
-                style={{background:"none",color:TEXT_MUTED,fontSize:12,fontWeight:700,padding:"0 2px",lineHeight:1}}>✕</button>
-            </div>
-          ))}
+      <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>🍧 Sabores naturales</div>
+        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>$65 chico / $80 grande · Cambia el emoji tocando el cuadrito</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+          {_saboresNat.map((sObj, i) => {
+            const nombre = sObj?.nombre || sObj;
+            const emoji = sObj?.emoji || "🍧";
+            return (
+              <div key={i} style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+                <input type="text" value={emoji} maxLength={2}
+                  onChange={e=>{ const v=e.target.value; setSaboresNat&&setSaboresNat(_saboresNat.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),emoji:v}:x)); }}
+                  style={{width:38,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
+                <span style={{flex:1,fontSize:13,fontWeight:700,color:"rgba(255,255,255,.85)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nombre}</span>
+                <button className="btn" onClick={()=>{btn();setSaboresNat&&setSaboresNat(_saboresNat.filter((_,j)=>j!==i));}}
+                  style={{background:"rgba(234,91,29,.2)",color:ORANGE,borderRadius:7,padding:"4px 8px",fontWeight:700,fontSize:11,flexShrink:0}}>✕</button>
+              </div>
+            );
+          })}
         </div>
         <div style={{display:"flex",gap:8}}>
-          <input className="input-light" placeholder="Nuevo sabor natural..." value={nuevoSaborNat} onChange={e=>setNuevoSaborNat(e.target.value)}
-            onKeyDown={e=>{if(e.key==="Enter"&&nuevoSaborNat.trim()){btn();setSaboresNat&&setSaboresNat([..._saboresNat,nuevoSaborNat.trim()]);setNuevoSaborNat("");}}}/>
-          <button className="btn" onClick={()=>{if(nuevoSaborNat.trim()){btn();setSaboresNat&&setSaboresNat([..._saboresNat,nuevoSaborNat.trim()]);setNuevoSaborNat("");}}}
-            style={{background:ORANGE,color:"white",borderRadius:10,padding:"0 18px",fontWeight:800,fontSize:18,flexShrink:0}}>+</button>
+          <input type="text" placeholder="🍧" value={nuevoSaborNatEmoji||""} onChange={e=>setNuevoSaborNatEmoji(e.target.value)} maxLength={2}
+            style={{width:46,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"10px 6px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
+          <input className="input" placeholder="Nombre del sabor..." value={nuevoSaborNat} onChange={e=>setNuevoSaborNat(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&nuevoSaborNat.trim()){btn();setSaboresNat&&setSaboresNat([..._saboresNat,{id:uid(),nombre:nuevoSaborNat.trim(),emoji:nuevoSaborNatEmoji||"🍧"}]);setNuevoSaborNat("");setNuevoSaborNatEmoji&&setNuevoSaborNatEmoji("");}}}/>
+          <button className="btn" onClick={()=>{if(nuevoSaborNat.trim()){btn();setSaboresNat&&setSaboresNat([..._saboresNat,{id:uid(),nombre:nuevoSaborNat.trim(),emoji:nuevoSaborNatEmoji||"🍧"}]);setNuevoSaborNat("");setNuevoSaborNatEmoji&&setNuevoSaborNatEmoji("");}}}
+            style={{background:ORANGE,color:"white",borderRadius:10,padding:"0 16px",fontWeight:800,fontSize:18,flexShrink:0}}>+</button>
         </div>
       </div>
 
       {/* SABORES DE AGUA */}
-      <div style={{background:"white",borderRadius:14,padding:16,marginBottom:14,border:`1px solid ${CREMA_DARK}`}}>
-        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:TEXT_MUTED,marginBottom:4,textTransform:"uppercase"}}>💧 Sabores de agua</div>
-        <div className="serif-it" style={{fontSize:14,color:TEXT_MUTED,marginBottom:10}}>Estos sabores cuestan $25 chico / $35 grande</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
-          {_saboresAgua.map((s,i) => (
-            <div key={i} style={{display:"flex",alignItems:"center",gap:4,background:"#EFF6FF",borderRadius:8,padding:"5px 10px",border:"1px solid #BFDBFE"}}>
-              <span style={{fontSize:13,fontWeight:700,color:TEXT_DARK}}>{s}</span>
-              <button className="btn" onClick={()=>{btn();setSaboresAgua&&setSaboresAgua(_saboresAgua.filter((_,j)=>j!==i));}}
-                style={{background:"none",color:TEXT_MUTED,fontSize:12,fontWeight:700,padding:"0 2px",lineHeight:1}}>✕</button>
-            </div>
-          ))}
+      <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>💧 Sabores de agua</div>
+        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>$25 chico / $35 grande · Cambia el emoji tocando el cuadrito</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+          {_saboresAgua.map((sObj, i) => {
+            const nombre = sObj?.nombre || sObj;
+            const emoji = sObj?.emoji || "💧";
+            return (
+              <div key={i} style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+                <input type="text" value={emoji} maxLength={2}
+                  onChange={e=>{ const v=e.target.value; setSaboresAgua&&setSaboresAgua(_saboresAgua.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),emoji:v}:x)); }}
+                  style={{width:38,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
+                <span style={{flex:1,fontSize:13,fontWeight:700,color:"rgba(255,255,255,.85)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nombre}</span>
+                <button className="btn" onClick={()=>{btn();setSaboresAgua&&setSaboresAgua(_saboresAgua.filter((_,j)=>j!==i));}}
+                  style={{background:"rgba(234,91,29,.2)",color:ORANGE,borderRadius:7,padding:"4px 8px",fontWeight:700,fontSize:11,flexShrink:0}}>✕</button>
+              </div>
+            );
+          })}
         </div>
         <div style={{display:"flex",gap:8}}>
-          <input className="input-light" placeholder="Nuevo sabor de agua..." value={nuevoSaborAgua} onChange={e=>setNuevoSaborAgua(e.target.value)}
-            onKeyDown={e=>{if(e.key==="Enter"&&nuevoSaborAgua.trim()){btn();setSaboresAgua&&setSaboresAgua([..._saboresAgua,nuevoSaborAgua.trim()]);setNuevoSaborAgua("");}}}/>
-          <button className="btn" onClick={()=>{if(nuevoSaborAgua.trim()){btn();setSaboresAgua&&setSaboresAgua([..._saboresAgua,nuevoSaborAgua.trim()]);setNuevoSaborAgua("");}}}
-            style={{background:COBALT,color:"white",borderRadius:10,padding:"0 18px",fontWeight:800,fontSize:18,flexShrink:0}}>+</button>
+          <input type="text" placeholder="💧" value={nuevoSaborAguaEmoji||""} onChange={e=>setNuevoSaborAguaEmoji(e.target.value)} maxLength={2}
+            style={{width:46,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"10px 6px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
+          <input className="input" placeholder="Nombre del sabor de agua..." value={nuevoSaborAgua} onChange={e=>setNuevoSaborAgua(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&nuevoSaborAgua.trim()){btn();setSaboresAgua&&setSaboresAgua([..._saboresAgua,{id:uid(),nombre:nuevoSaborAgua.trim(),emoji:nuevoSaborAguaEmoji||"💧"}]);setNuevoSaborAgua("");setNuevoSaborAguaEmoji&&setNuevoSaborAguaEmoji("");}}}/>
+          <button className="btn" onClick={()=>{if(nuevoSaborAgua.trim()){btn();setSaboresAgua&&setSaboresAgua([..._saboresAgua,{id:uid(),nombre:nuevoSaborAgua.trim(),emoji:nuevoSaborAguaEmoji||"💧"}]);setNuevoSaborAgua("");setNuevoSaborAguaEmoji&&setNuevoSaborAguaEmoji("");}}}
+            style={{background:COBALT,color:"white",borderRadius:10,padding:"0 16px",fontWeight:800,fontSize:18,flexShrink:0}}>+</button>
         </div>
       </div>
 
@@ -2872,10 +2916,13 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
           if(borrarTexto !== "BORRAR") return;
           btn();
           setPedidos([]);
-          save("rr_gastos_caja", []); // también limpiar gastos
-          save("rr_fondo_hoy", null); // resetear fondo para que pida nuevo
+          save("rr_gastos_caja", []);
+          save("rr_fondo_hoy", null);
+          save("rr_cierres", []);
+          save("rr_cierres_semana", []);
+          save("rr_inventarios", {});
           setBorrarTexto("");
-          showSaved && showSaved("Historial borrado");
+          showSaved && showSaved("Todo el historial borrado");
         }}
           style={{background:borrarTexto==="BORRAR"?"rgba(230,104,50,.4)":"rgba(230,104,50,.1)",color:borrarTexto==="BORRAR"?"white":"rgba(230,104,50,.5)",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:13,border:`1px solid ${borrarTexto==="BORRAR"?ORANGE:"rgba(230,104,50,.3)"}`,width:"100%"}}>
           🗑️ Borrar historial completo
@@ -3217,9 +3264,26 @@ function HistorialTab({ pedidos, btn, actualizarPedido }) {
 
   const PedidoCard = ({ p }) => {
     const [editandoPago, setEditandoPago] = useState(false);
+    const [editandoItems, setEditandoItems] = useState(false);
     const metodoIcon = (m) => m==="Efectivo"?"💵":m==="Transferencia"?"📲":m==="Terminal"?"💳":"🎁";
+
+    // Expandir items con cantidad para edición
+    const [itemsEdit, setItemsEdit] = useState(() => p.items.flatMap((it) => {
+      const cant = it.cantidad || 1;
+      return Array.from({length: cant}, (_, ci) => ({...it, cantidad:1, toppings: ci===0?(it.toppings||{}):{}}));
+    }));
+    const [editItemIdx, setEditItemIdx] = useState(null);
+
+    const guardarItems = () => {
+      btn("success");
+      actualizarPedido(p.id, { items: itemsEdit, total: calcPedidoTotal(itemsEdit, p.esCortes) });
+      setEditandoItems(false);
+      setEditItemIdx(null);
+    };
+
     return (
       <div style={{background:"white",borderRadius:14,padding:"14px 16px",marginBottom:8,border:`1px solid ${CREMA_DARK}`}}>
+        {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:6}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
@@ -3235,10 +3299,16 @@ function HistorialTab({ pedidos, btn, actualizarPedido }) {
               </button>
             </div>
           </div>
-          <div className="display" style={{fontSize:22,color:p.esCortes?"#7C3AED":ORANGE,lineHeight:1}}>
-            {p.esCortes?"🎁":fmt(p.total)}
+          <div style={{textAlign:"right"}}>
+            <div className="display" style={{fontSize:22,color:p.esCortes?"#7C3AED":ORANGE,lineHeight:1}}>{p.esCortes?"🎁":fmt(p.total)}</div>
+            <button className="btn" onClick={()=>setEditandoItems(!editandoItems)}
+              style={{marginTop:6,fontSize:11,fontWeight:700,color:editandoItems?ORANGE:TEXT_MUTED,background:editandoItems?"rgba(230,104,50,.1)":CREMA_DARK,borderRadius:7,padding:"3px 9px",border:editandoItems?`1px solid ${ORANGE}`:"none"}}>
+              {editandoItems?"✕ cerrar":"✏️ editar pedido"}
+            </button>
           </div>
         </div>
+
+        {/* Cambiar método de pago */}
         {editandoPago && (
           <div style={{background:CREMA_DARK,borderRadius:10,padding:10,marginBottom:8}}>
             <div style={{fontSize:11,fontWeight:800,color:TEXT_MUTED,marginBottom:6,letterSpacing:".08em",textTransform:"uppercase"}}>Cambiar método de pago</div>
@@ -3254,11 +3324,115 @@ function HistorialTab({ pedidos, btn, actualizarPedido }) {
             </div>
           </div>
         )}
-        {p.items.map((it,i) => (
-          <div key={i} style={{fontSize:13,color:TEXT_MUTED,marginTop:2,paddingLeft:4}} className="serif-it">
-            {it.tipo==="especial" ? ("✏️ " + it.descripcion) : ((it.producto?.nombre||"") + " — " + ((it.sabores||[]).join(", ")||"sin sabor"))}
+
+        {/* Lista de items — vista normal */}
+        {!editandoItems && p.items.map((it,i) => {
+          const isEsp = it.tipo === "especial";
+          const cant = it.cantidad || 1;
+          const tops = toppingsLabel(it.toppings, null, "full");
+          return (
+            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,marginTop:6,paddingTop:i>0?6:0,borderTop:i>0?`1px solid ${CREMA_DARK}`:"none"}}>
+              {cant > 1 && (
+                <div style={{background:ORANGE,color:"white",borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:900,flexShrink:0,marginTop:1}}>
+                  {cant}×
+                </div>
+              )}
+              <div style={{flex:1,minWidth:0}}>
+                {isEsp ? (
+                  <div className="serif-it" style={{fontSize:13,color:TEXT_MUTED}}>✏️ {it.descripcion} — {fmt(it.precio)}</div>
+                ) : (
+                  <>
+                    <div className="serif-it" style={{fontSize:13,color:TEXT_MUTED}}>
+                      <span style={{fontWeight:700,color:TEXT_DARK}}>{it.producto?.nombre}</span>
+                      {" — "}
+                      {(it.sabores||[]).join(", ") || "sin sabor"}
+                    </div>
+                    {tops && <div style={{fontSize:12,color:"#9333EA",fontWeight:700,marginTop:1}}>{tops}</div>}
+                    {it.notas && <div className="serif-it" style={{fontSize:12,color:ORANGE,marginTop:1}}>📝 {it.notas}</div>}
+                  </>
+                )}
+              </div>
+              <div className="display" style={{fontSize:14,color:ORANGE,flexShrink:0}}>{fmt(calcItemTotal(it))}</div>
+            </div>
+          );
+        })}
+
+        {/* Edición de items */}
+        {editandoItems && (
+          <div style={{marginTop:8,background:CREMA,borderRadius:12,padding:10}}>
+            <div style={{fontSize:11,fontWeight:800,color:TEXT_MUTED,marginBottom:8,textTransform:"uppercase",letterSpacing:".08em"}}>Editar raspas — toca una para modificarla</div>
+            {itemsEdit.map((it, idx) => {
+              const isEsp = it.tipo === "especial";
+              const isOpen = editItemIdx === idx;
+              const cat = it.producto?.categoria || "natural";
+              const sabsDisp = cat === "agua" ? SABORES_AGUA : SABORES_NATURALES;
+              const prodsFilt = [{id:"nat_ch",nombre:"Natural Chico",precio:65,categoria:"natural"},{id:"nat_gr",nombre:"Natural Grande",precio:80,categoria:"natural"},{id:"agua_ch",nombre:"Agua Chico",precio:25,categoria:"agua"},{id:"agua_gr",nombre:"Agua Grande",precio:35,categoria:"agua"}].filter(pr=>pr.categoria===cat);
+              return (
+                <div key={idx} style={{background:"white",borderRadius:10,padding:"10px 12px",marginBottom:6,border:`2px solid ${isOpen?ORANGE:CREMA_DARK}`,cursor:isEsp?"default":"pointer"}}
+                  onClick={()=>{ if(!isEsp) setEditItemIdx(isOpen?null:idx); }}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      {isEsp ? (
+                        <div style={{fontSize:13,color:TEXT_MUTED}}>✏️ {it.descripcion}</div>
+                      ) : (
+                        <>
+                          <div style={{fontSize:12,fontWeight:800,color:TEXT_MUTED,textTransform:"uppercase"}}>{it.producto?.nombre?.split(" ").pop()} <span style={{color:TEXT_MUTED,fontWeight:400}}>#{idx+1}</span></div>
+                          <div style={{fontSize:14,fontWeight:700,color:TEXT_DARK}}>{(it.sabores||[]).join(" · ")||"sin sabor"}</div>
+                          {toppingsLabel(it.toppings,null,"full") && <div style={{fontSize:12,color:"#9333EA",fontWeight:700}}>{toppingsLabel(it.toppings,null,"full")}</div>}
+                        </>
+                      )}
+                    </div>
+                    <div className="display" style={{fontSize:16,color:ORANGE,flexShrink:0}}>{fmt(calcItemTotal(it))}</div>
+                  </div>
+                  {isOpen && !isEsp && (
+                    <div style={{marginTop:10,paddingTop:8,borderTop:`1px solid ${CREMA_DARK}`}} onClick={e=>e.stopPropagation()}>
+                      <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Sabores</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,marginBottom:8}}>
+                        {sabsDisp.map(s => (
+                          <button key={s} className="btn" onClick={()=>{ btn("check"); const cur=it.sabores||[]; const next=cur.includes(s)?cur.filter(x=>x!==s):[...cur,s]; setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,sabores:next}:x)); }}
+                            style={{padding:"7px 3px",borderRadius:8,fontSize:11,fontWeight:700,textAlign:"center",border:"2px solid",
+                              borderColor:(it.sabores||[]).includes(s)?ORANGE:CREMA_DARK,
+                              background:(it.sabores||[]).includes(s)?"rgba(230,104,50,.12)":"white",
+                              color:(it.sabores||[]).includes(s)?ORANGE_DARK:TEXT_DARK}}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Toppings</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:8}}>
+                        {[["chamoy","🌶️","Chamoy"],["tajin","🧂","Tajín"],["crema","🥛","Crema"]].map(([k,ic,lb]) => (
+                          <button key={k} className="btn" onClick={()=>{ btn("check"); setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,toppings:{...(x.toppings||{}),[k]:!(x.toppings||{})[k]}}:x)); }}
+                            style={{padding:"7px 3px",borderRadius:8,fontSize:11,fontWeight:700,textAlign:"center",border:"2px solid",
+                              borderColor:(it.toppings||{})[k]?ORANGE:CREMA_DARK,
+                              background:(it.toppings||{})[k]?"rgba(230,104,50,.12)":"white",
+                              color:(it.toppings||{})[k]?ORANGE_DARK:TEXT_DARK}}>
+                            <div style={{fontSize:14}}>{ic}</div>{lb}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Tamaño</div>
+                      <div style={{display:"grid",gridTemplateColumns:`repeat(${prodsFilt.length},1fr)`,gap:4}}>
+                        {prodsFilt.map(pr => (
+                          <button key={pr.id} className="btn" onClick={()=>{ btn(); setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,producto:pr}:x)); }}
+                            style={{padding:"8px 4px",borderRadius:8,fontWeight:800,border:"2px solid",textAlign:"center",
+                              borderColor:it.producto?.id===pr.id?ORANGE:CREMA_DARK,
+                              background:it.producto?.id===pr.id?"rgba(230,104,50,.12)":"white",color:TEXT_DARK}}>
+                            <div className="display" style={{fontSize:13}}>{pr.nombre.split(" ").pop()}</div>
+                            <div className="display" style={{fontSize:15,color:ORANGE}}>${pr.precio}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <button className="btn" onClick={guardarItems}
+              style={{width:"100%",background:ORANGE,color:"white",borderRadius:10,padding:"11px",fontWeight:900,fontSize:13,marginTop:4,letterSpacing:".04em",textTransform:"uppercase"}}>
+              ✓ Guardar cambios
+            </button>
           </div>
-        ))}
+        )}
       </div>
     );
   };
