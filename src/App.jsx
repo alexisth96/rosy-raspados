@@ -886,6 +886,7 @@ function PagoStep({ items, total, esCortes, cliente, setCliente, metodoPago, set
   const [paso, setPaso] = useState(1); // 1: nombre+método, 2: cobrar
   const [montoRecibido, setMontoRecibido] = useState("");
   const [propina, setPropina] = useState("");
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const cambio = montoRecibido !== "" && Number(montoRecibido) >= total ? Number(montoRecibido) - total : null;
 
   // Resumen inline — visible en ambos pasos
@@ -1026,7 +1027,28 @@ function PagoStep({ items, total, esCortes, cliente, setCliente, metodoPago, set
           </>
         )}
 
-        <button className="btn" onClick={onCancel} style={{width:"100%",background:"none",color:"rgba(255,255,255,.4)",fontSize:13,padding:8,fontFamily:"'Instrument Serif',serif",fontStyle:"italic"}}>Cancelar todo</button>
+        {!confirmCancel ? (
+          <button className="btn" onClick={()=>{ btn(); setConfirmCancel(true); }}
+            style={{width:"100%",background:"none",color:"rgba(255,255,255,.4)",fontSize:13,padding:8,fontFamily:"'Instrument Serif',serif",fontStyle:"italic"}}>
+            Cancelar todo
+          </button>
+        ) : (
+          <div style={{background:"rgba(230,104,50,.15)",border:`1px solid ${ORANGE}`,borderRadius:14,padding:14,textAlign:"center"}}>
+            <div className="display" style={{fontSize:14,color:"white",marginBottom:4}}>¿CANCELAR EL PEDIDO?</div>
+            <div className="serif-it" style={{fontSize:13,color:"rgba(255,255,255,.6)",marginBottom:12}}>Se perderán todos los items</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <button className="btn" onClick={()=>{ btn(); setConfirmCancel(false); }}
+                style={{background:"rgba(255,255,255,.1)",color:"white",borderRadius:10,padding:12,fontWeight:800,fontSize:13}}>
+                No, volver
+              </button>
+              <button className="btn" onClick={()=>{ btn(); onCancel(); }}
+                style={{background:ORANGE,color:"white",borderRadius:10,padding:12,fontWeight:900,fontSize:13}}>
+                Sí, cancelar
+              </button>
+            </div>
+          </div>
+        )}
+        {/* Modal de confirmación en la misma pantalla */}
       </div>
     </div>
   );
@@ -2732,8 +2754,27 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
           {_saboresNat.map((sObj, i) => {
             const nombre = sObj?.nombre || sObj;
             const emoji = sObj?.emoji || "🍧";
+            const moverArriba = () => {
+              if (i === 0) return;
+              const arr = [..._saboresNat];
+              [arr[i-1], arr[i]] = [arr[i], arr[i-1]];
+              setSaboresNat && setSaboresNat(arr);
+            };
+            const moverAbajo = () => {
+              if (i === _saboresNat.length - 1) return;
+              const arr = [..._saboresNat];
+              [arr[i], arr[i+1]] = [arr[i+1], arr[i]];
+              setSaboresNat && setSaboresNat(arr);
+            };
             return (
-              <div key={i} style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+              <div key={i} style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
+                {/* Botones de orden */}
+                <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+                  <button className="btn" onClick={()=>{btn();moverArriba();}} disabled={i===0}
+                    style={{background:i===0?"rgba(255,255,255,.04)":"rgba(255,255,255,.12)",color:i===0?"rgba(255,255,255,.2)":"white",borderRadius:5,width:22,height:18,fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>▲</button>
+                  <button className="btn" onClick={()=>{btn();moverAbajo();}} disabled={i===_saboresNat.length-1}
+                    style={{background:i===_saboresNat.length-1?"rgba(255,255,255,.04)":"rgba(255,255,255,.12)",color:i===_saboresNat.length-1?"rgba(255,255,255,.2)":"white",borderRadius:5,width:22,height:18,fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>▼</button>
+                </div>
                 <input type="text" value={emoji} maxLength={2}
                   onChange={e=>{ const v=e.target.value; setSaboresNat&&setSaboresNat(_saboresNat.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),emoji:v}:x)); }}
                   style={{width:38,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
@@ -2764,8 +2805,26 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
           {_saboresAgua.map((sObj, i) => {
             const nombre = sObj?.nombre || sObj;
             const emoji = sObj?.emoji || "💧";
+            const moverArriba = () => {
+              if (i === 0) return;
+              const arr = [..._saboresAgua];
+              [arr[i-1], arr[i]] = [arr[i], arr[i-1]];
+              setSaboresAgua && setSaboresAgua(arr);
+            };
+            const moverAbajo = () => {
+              if (i === _saboresAgua.length - 1) return;
+              const arr = [..._saboresAgua];
+              [arr[i], arr[i+1]] = [arr[i+1], arr[i]];
+              setSaboresAgua && setSaboresAgua(arr);
+            };
             return (
-              <div key={i} style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+              <div key={i} style={{background:"rgba(255,255,255,.06)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
+                <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+                  <button className="btn" onClick={()=>{btn();moverArriba();}} disabled={i===0}
+                    style={{background:i===0?"rgba(255,255,255,.04)":"rgba(255,255,255,.12)",color:i===0?"rgba(255,255,255,.2)":"white",borderRadius:5,width:22,height:18,fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>▲</button>
+                  <button className="btn" onClick={()=>{btn();moverAbajo();}} disabled={i===_saboresAgua.length-1}
+                    style={{background:i===_saboresAgua.length-1?"rgba(255,255,255,.04)":"rgba(255,255,255,.12)",color:i===_saboresAgua.length-1?"rgba(255,255,255,.2)":"white",borderRadius:5,width:22,height:18,fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>▼</button>
+                </div>
                 <input type="text" value={emoji} maxLength={2}
                   onChange={e=>{ const v=e.target.value; setSaboresAgua&&setSaboresAgua(_saboresAgua.map((x,j)=>j===i?{...(x?.nombre?x:{nombre:x}),emoji:v}:x)); }}
                   style={{width:38,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
@@ -2909,14 +2968,18 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
         <button className="btn" disabled={borrarTexto !== "BORRAR"} onClick={()=>{
           if(borrarTexto !== "BORRAR") return;
           btn();
+          // Borrar todo el historial de ventas y movimientos
           setPedidos([]);
+          save("rr_pedidos", []);
           save("rr_gastos_caja", []);
           save("rr_fondo_hoy", null);
           save("rr_cierres", []);
           save("rr_cierres_semana", []);
           save("rr_inventarios", {});
+          save("rr_cajero_hoy", null);
           setBorrarTexto("");
-          showSaved && showSaved("Todo el historial borrado");
+          // Regresar a pantalla de cajero para empezar desde 0
+          setTimeout(() => window.location.reload(), 800);
         }}
           style={{background:borrarTexto==="BORRAR"?"rgba(230,104,50,.4)":"rgba(230,104,50,.1)",color:borrarTexto==="BORRAR"?"white":"rgba(230,104,50,.5)",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:13,border:`1px solid ${borrarTexto==="BORRAR"?ORANGE:"rgba(230,104,50,.3)"}`,width:"100%"}}>
           🗑️ Borrar historial completo
