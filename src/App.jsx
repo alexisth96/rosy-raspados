@@ -451,7 +451,7 @@ export default function App() {
           </div>
         )}
         {tab === "reportes" && <div style={{padding:"20px"}}><ReportesTab pedidos={pedidos} actualizarPedido={actualizarPedido} vasosExtra={vasosExtra} gastosCaja={gastosCaja} cierresSemana={cierresSemana} btn={btn} requirePin={requirePin}/></div>}
-        {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido}/></div>}
+        {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido} toppingsConfig={toppingsConfig}/></div>}
         {tab === "gastos"   && <div style={{padding:"20px"}}><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
         {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe} saboresNat={saboresNat} saboresAgua={saboresAgua} requirePin={requirePin}/></div>}
         {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} saboresNat={saboresNat} setSaboresNat={setSaboresNat} saboresAgua={saboresAgua} setSaboresAgua={setSaboresAgua} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
@@ -2638,6 +2638,8 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
   const [nuevoSaborNatEmoji, setNuevoSaborNatEmoji] = useState("");
   const [nuevoSaborAgua, setNuevoSaborAgua] = useState("");
   const [nuevoSaborAguaEmoji, setNuevoSaborAguaEmoji] = useState("");
+  const [nuevoToppingNombre, setNuevoToppingNombre] = useState("");
+  const [nuevoToppingEmoji, setNuevoToppingEmoji] = useState("");
   const _saboresNat = saboresNat || SABORES_NATURALES;
   const _saboresAgua = saboresAgua || SABORES_AGUA;
 
@@ -2850,18 +2852,45 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
       {/* TOPPINGS */}
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:4,textTransform:"uppercase"}}>🌶️ Toppings</div>
-        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>Cambia el emoji de cada topping. El nombre no se puede cambiar.</div>
-        {(toppingsConfig||TOPPINGS_DEFAULT).map((tc,i) => (
-          <div key={tc.id} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"10px 12px",marginBottom:6,display:"flex",alignItems:"center",gap:12}}>
-            <input type="text" value={tc.emoji} maxLength={2}
-              onChange={e=>{
-                const newEmoji = e.target.value;
-                setToppingsConfig && setToppingsConfig(prev => prev.map((x,j) => j===i ? {...x, emoji:newEmoji} : x));
-              }}
-              style={{width:52,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:8,padding:"8px",color:"white",fontSize:22,outline:"none",textAlign:"center"}}/>
-            <div className="display" style={{fontSize:14,color:"white",letterSpacing:".02em"}}>{tc.nombre.toUpperCase()}</div>
-          </div>
-        ))}
+        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>Edita emoji, nombre y orden. Agrégalos o quítalos.</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+          {(toppingsConfig||TOPPINGS_DEFAULT).map((tc, i) => {
+            const cfg = toppingsConfig || TOPPINGS_DEFAULT;
+            const moverArriba = () => { if(i===0)return; const a=[...cfg]; [a[i-1],a[i]]=[a[i],a[i-1]]; setToppingsConfig&&setToppingsConfig(a); };
+            const moverAbajo  = () => { if(i===cfg.length-1)return; const a=[...cfg]; [a[i],a[i+1]]=[a[i+1],a[i]]; setToppingsConfig&&setToppingsConfig(a); };
+            return (
+              <div key={tc.id||i} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
+                {/* Orden */}
+                <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+                  <button className="btn" onClick={()=>{btn();moverArriba();}} disabled={i===0}
+                    style={{background:i===0?"rgba(255,255,255,.04)":"rgba(255,255,255,.12)",color:i===0?"rgba(255,255,255,.2)":"white",borderRadius:5,width:22,height:18,fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>▲</button>
+                  <button className="btn" onClick={()=>{btn();moverAbajo();}} disabled={i===cfg.length-1}
+                    style={{background:i===cfg.length-1?"rgba(255,255,255,.04)":"rgba(255,255,255,.12)",color:i===cfg.length-1?"rgba(255,255,255,.2)":"white",borderRadius:5,width:22,height:18,fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",border:"none"}}>▼</button>
+                </div>
+                {/* Emoji */}
+                <input type="text" value={tc.emoji} maxLength={2}
+                  onChange={e=>setToppingsConfig&&setToppingsConfig(cfg.map((x,j)=>j===i?{...x,emoji:e.target.value}:x))}
+                  style={{width:38,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
+                {/* Nombre */}
+                <input type="text" value={tc.nombre}
+                  onChange={e=>setToppingsConfig&&setToppingsConfig(cfg.map((x,j)=>j===i?{...x,nombre:e.target.value}:x))}
+                  style={{flex:1,background:"transparent",border:"none",borderBottom:"1px solid rgba(255,255,255,.2)",color:"white",fontSize:13,fontWeight:700,outline:"none",padding:"2px 4px",minWidth:0}}/>
+                {/* Quitar */}
+                <button className="btn" onClick={()=>{btn();setToppingsConfig&&setToppingsConfig(cfg.filter((_,j)=>j!==i));}}
+                  style={{background:"rgba(234,91,29,.2)",color:ORANGE,borderRadius:7,padding:"4px 8px",fontWeight:700,fontSize:11,flexShrink:0}}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+        {/* Agregar nuevo topping */}
+        <div style={{display:"flex",gap:8}}>
+          <input type="text" placeholder="🫙" value={nuevoToppingEmoji||""} onChange={e=>setNuevoToppingEmoji&&setNuevoToppingEmoji(e.target.value)} maxLength={2}
+            style={{width:46,background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"10px 6px",color:"white",fontSize:18,outline:"none",textAlign:"center",flexShrink:0}}/>
+          <input className="input" placeholder="Nombre del topping..." value={nuevoToppingNombre||""} onChange={e=>setNuevoToppingNombre&&setNuevoToppingNombre(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&nuevoToppingNombre&&nuevoToppingNombre.trim()){btn();setToppingsConfig&&setToppingsConfig([...(toppingsConfig||TOPPINGS_DEFAULT),{id:uid(),nombre:nuevoToppingNombre.trim(),emoji:nuevoToppingEmoji||"🫙"}]);setNuevoToppingNombre&&setNuevoToppingNombre("");setNuevoToppingEmoji&&setNuevoToppingEmoji("");}}}/>
+          <button className="btn" onClick={()=>{if(nuevoToppingNombre&&nuevoToppingNombre.trim()){btn();setToppingsConfig&&setToppingsConfig([...(toppingsConfig||TOPPINGS_DEFAULT),{id:uid(),nombre:nuevoToppingNombre.trim(),emoji:nuevoToppingEmoji||"🫙"}]);setNuevoToppingNombre&&setNuevoToppingNombre("");setNuevoToppingEmoji&&setNuevoToppingEmoji("");}}}
+            style={{background:ORANGE,color:"white",borderRadius:10,padding:"0 16px",fontWeight:800,fontSize:18,flexShrink:0}}>+</button>
+        </div>
       </div>
 
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
@@ -3132,7 +3161,7 @@ function GastosTab({ gastosCaja: gastosCajaPropG, agregarGasto, requirePin, btn,
 }
 
 // ─── EDITAR PEDIDO EN COLA ────────────────────────────────────────────────────
-function EditarPedidoColaModal({ pedido, onSave, onClose, btn }) {
+function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig }) {
   // Expandir items con cantidad en subítems individuales para edición granular
   const expandirItems = (its) => its.flatMap((it, idx) => {
     const cant = it.cantidad || 1;
@@ -3233,13 +3262,13 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn }) {
                     </div>
                     <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:6,textTransform:"uppercase"}}>Toppings</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:10}}>
-                      {[["chamoy","🌶️","Chamoy"],["tajin","🧂","Tajín"],["crema","🥛","Crema"]].map(([k,ic,lb]) => (
-                        <button key={k} className="btn" onClick={()=>togTop(k)}
+                      {(toppingsConfig||TOPPINGS_DEFAULT).map(tc => (
+                        <button key={tc.id||tc.nombre} className="btn" onClick={()=>togTop(tc.id||tc.nombre)}
                           style={{padding:"8px 4px",borderRadius:8,fontSize:11,fontWeight:700,textAlign:"center",border:"2px solid",
-                            borderColor:(it.toppings||{})[k]?ORANGE:CREMA_DARK,
-                            background:(it.toppings||{})[k]?"rgba(230,104,50,.12)":"white",
-                            color:(it.toppings||{})[k]?ORANGE_DARK:TEXT_DARK}}>
-                          <div style={{fontSize:16}}>{ic}</div>{lb}
+                            borderColor:(it.toppings||{})[tc.id||tc.nombre]?ORANGE:CREMA_DARK,
+                            background:(it.toppings||{})[tc.id||tc.nombre]?"rgba(230,104,50,.12)":"white",
+                            color:(it.toppings||{})[tc.id||tc.nombre]?ORANGE_DARK:TEXT_DARK}}>
+                          <div style={{fontSize:16}}>{tc.emoji}</div>{tc.nombre}
                         </button>
                       ))}
                     </div>
@@ -3297,7 +3326,7 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn }) {
 }
 
 // ─── HISTORIAL TAB ────────────────────────────────────────────────────────────
-function HistorialTab({ pedidos, btn, actualizarPedido }) {
+function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
   const entregados = pedidos.filter(p => p.entregado).sort((a,b) => b.fecha.localeCompare(a.fecha));
 
   // Agrupar por fecha local del dispositivo
@@ -3457,15 +3486,18 @@ function HistorialTab({ pedidos, btn, actualizarPedido }) {
                       </div>
                       <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Toppings</div>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:8}}>
-                        {[["chamoy","🌶️","Chamoy"],["tajin","🧂","Tajín"],["crema","🥛","Crema"]].map(([k,ic,lb]) => (
-                          <button key={k} className="btn" onClick={()=>{ btn("check"); setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,toppings:{...(x.toppings||{}),[k]:!(x.toppings||{})[k]}}:x)); }}
-                            style={{padding:"7px 3px",borderRadius:8,fontSize:11,fontWeight:700,textAlign:"center",border:"2px solid",
-                              borderColor:(it.toppings||{})[k]?ORANGE:CREMA_DARK,
-                              background:(it.toppings||{})[k]?"rgba(230,104,50,.12)":"white",
-                              color:(it.toppings||{})[k]?ORANGE_DARK:TEXT_DARK}}>
-                            <div style={{fontSize:14}}>{ic}</div>{lb}
-                          </button>
-                        ))}
+                        {(toppingsConfig||TOPPINGS_DEFAULT).map(tc => {
+                          const k = tc.id||tc.nombre;
+                          return (
+                            <button key={k} className="btn" onClick={()=>{ btn("check"); setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,toppings:{...(x.toppings||{}),[k]:!(x.toppings||{})[k]}}:x)); }}
+                              style={{padding:"7px 3px",borderRadius:8,fontSize:11,fontWeight:700,textAlign:"center",border:"2px solid",
+                                borderColor:(it.toppings||{})[k]?ORANGE:CREMA_DARK,
+                                background:(it.toppings||{})[k]?"rgba(230,104,50,.12)":"white",
+                                color:(it.toppings||{})[k]?ORANGE_DARK:TEXT_DARK}}>
+                              <div style={{fontSize:14}}>{tc.emoji}</div>{tc.nombre}
+                            </button>
+                          );
+                        })}
                       </div>
                       <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Tamaño</div>
                       <div style={{display:"grid",gridTemplateColumns:`repeat(${prodsFilt.length},1fr)`,gap:4}}>
