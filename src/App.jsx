@@ -272,6 +272,7 @@ export default function App() {
   const [ventasLibres, setVentasLibres]  = useState(() => load("rr_ventas_libres_tipos", VENTAS_LIBRES_DEFAULT));
   const [pinJefe, setPinJefe]           = useState(() => load("rr_pin_jefe", PIN_DEFAULT));
   const [toppingsConfig, setToppingsConfig] = useState(() => load("rr_toppings", TOPPINGS_DEFAULT));
+  const [waNumero, setWaNumero] = useState(() => load("rr_wa_numero", ""));
   const [inventariosGuardados, setInventariosGuardados] = useState(() => load("rr_inventarios", {}));
   const [saboresNat, setSaboresNat] = useState(() => load("rr_sabores_nat", SABORES_NAT_DEFAULT));
   const [saboresAgua, setSaboresAgua] = useState(() => load("rr_sabores_agua", SABORES_AGUA_DEFAULT));
@@ -296,6 +297,7 @@ export default function App() {
   useEffect(() => save("rr_ventas_libres_tipos", ventasLibres), [ventasLibres]);
   useEffect(() => save("rr_pin_jefe", pinJefe), [pinJefe]);
   useEffect(() => save("rr_toppings", toppingsConfig), [toppingsConfig]);
+  useEffect(() => save("rr_wa_numero", waNumero), [waNumero]);
   useEffect(() => save("rr_inventarios", inventariosGuardados), [inventariosGuardados]);
   useEffect(() => save("rr_sabores_nat", saboresNat), [saboresNat]);
   useEffect(() => save("rr_sabores_agua", saboresAgua), [saboresAgua]);
@@ -453,8 +455,8 @@ export default function App() {
         {tab === "reportes" && <div style={{padding:"20px"}}><ReportesTab pedidos={pedidos} actualizarPedido={actualizarPedido} vasosExtra={vasosExtra} gastosCaja={gastosCaja} cierresSemana={cierresSemana} btn={btn} requirePin={requirePin}/></div>}
         {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido} toppingsConfig={toppingsConfig}/></div>}
         {tab === "gastos"   && <div style={{padding:"20px"}}><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
-        {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe} saboresNat={saboresNat} saboresAgua={saboresAgua} requirePin={requirePin}/></div>}
-        {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} saboresNat={saboresNat} setSaboresNat={setSaboresNat} saboresAgua={saboresAgua} setSaboresAgua={setSaboresAgua} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
+        {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe} saboresNat={saboresNat} saboresAgua={saboresAgua} requirePin={requirePin} waNumero={waNumero}/></div>}
+        {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} saboresNat={saboresNat} setSaboresNat={setSaboresNat} saboresAgua={saboresAgua} setSaboresAgua={setSaboresAgua} waNumero={waNumero} setWaNumero={setWaNumero} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
       </div>
     </div>
   );
@@ -2020,7 +2022,7 @@ function ReportesTab({ pedidos, actualizarPedido, vasosExtra, gastosCaja: gastos
 }
 
 // ─── CIERRE TAB ───────────────────────────────────────────────────────────────
-function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gastosCajaPropC, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados: invGuardadosProp, setInventariosGuardados, pinJefe, saboresNat, saboresAgua, requirePin }) {
+function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gastosCajaPropC, agregarCierre, agregarCierreSemana, cajeroActivo, btn, showSaved, inventariosGuardados: invGuardadosProp, setInventariosGuardados, pinJefe, saboresNat, saboresAgua, requirePin, waNumero }) {
   const gastosCaja = gastosCajaPropC || [];
   const inventariosGuardados = invGuardadosProp || {};
   const [efectivoContado, setEfectivoContado] = useState("");
@@ -2460,20 +2462,61 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
       </button>
 
       {/* Compartir resumen por WhatsApp */}
-      <button className="btn" onClick={()=>{
-        btn();
-        const fecha = new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"});
-        const sabsLine = sabsCriticos.length > 0 ? sabsCriticos.map(([s,v])=>`- ${s}: ${v} botes`).join("\n") : "Sin alertas";
-        const comprLine = Object.entries(comprasNecesarias).filter(([_,v])=>v).map(([k])=>k).join(", ") || "Nada por ahora";
-        const gastosLine = gastosHoy.length > 0 ? gastosHoy.map(g=>`-${fmt(g.monto)} ${g.descripcion}`).join(", ") : "Ninguna";
-        const msg = `🍧 Rosy Raspados — Cierre del día\n📅 ${fecha}\n👤 Cajero: ${cajeroActivo}\n\nVENTAS DEL DÍA\n💵 Efectivo: ${fmt(ventasEfectivo)}\n📲 Transferencia: ${fmt(ventasTransfer)}\n💳 Terminal: ${fmt(ventasTerminal)}\nTOTAL: ${fmt(totalDia)}\n\n📊 Pedidos: ${hoy.length} (${numEntregados} entregados)\n🎁 Cortesías: ${cortesias}\n💰 Propinas: ${fmt(propinasDia)}\n\n💵 CUADRE DE CAJA\nFondo inicial: ${fmt(fondoMonto)}\nSalidas: ${gastosLine}\nDebería haber: ${fmt(debeHaber)}\nContado: ${contado!==null?fmt(contado):"sin contar"}\n${diff===null?"":diff===0?"✅ Cuadra perfecto":diff>0?`↑ Sobra ${fmt(diff)}`:`↓ Falta ${fmt(Math.abs(diff))}`}\n\n📦 Inventario crítico:\n${sabsLine}\n\n🛒 Falta comprar:\n${comprLine}\n\n📝 Notas: ${notasTurno||"ninguna"}`;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const url = isMobile ? `whatsapp://send?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-        window.open(url, "_blank");
-      }}
-        style={{width:"100%",background:"#22C55E",color:"white",borderRadius:14,padding:14,fontSize:14,fontWeight:800,letterSpacing:".04em",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        <span style={{fontSize:18}}>📲</span> Enviar resumen por WhatsApp
-      </button>
+      {(() => {
+        const enviarWA = () => {
+          btn();
+          const fecha = new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"});
+          const sabsLine = sabsCriticos.length > 0 ? sabsCriticos.map(([s,v])=>"- "+s+": "+v+" botes").join("\n") : "Sin alertas";
+          const comprLine = Object.entries(comprasNecesarias).filter(([_,v])=>v).map(([k])=>k).join(", ") || "Nada por ahora";
+          const gastosLine = gastosHoy.length > 0 ? gastosHoy.map(g=>"-"+fmt(g.monto)+" "+g.descripcion).join(", ") : "Ninguna";
+          const cuadreStr = diff===null?"sin contar aún":diff===0?"✅ Cuadra perfecto":diff>0?"↑ Sobra "+fmt(diff):"↓ Falta "+fmt(Math.abs(diff));
+          const msg = [
+            "🍧 *Rosy Raspados — Cierre del día*",
+            "📅 "+fecha+" · 👤 "+cajeroActivo,
+            "",
+            "*VENTAS DEL DÍA*",
+            "💵 Efectivo: "+fmt(ventasEfectivo),
+            "📲 Transferencia: "+fmt(ventasTransfer),
+            "💳 Terminal: "+fmt(ventasTerminal),
+            "📊 *TOTAL: "+fmt(totalDia)+"*",
+            "",
+            "🍧 Raspas: "+hoy.flatMap(p=>(p.items||[]).filter(it=>it.tipo!=="especial")).length,
+            "📦 Pedidos: "+hoy.length+" · 🎁 Cortesías: "+cortesias,
+            propinasDia>0?"💰 Propinas: "+fmt(propinasDia):"",
+            "",
+            "*CUADRE DE CAJA*",
+            "Fondo inicial: "+fmt(fondoMonto),
+            gastosHoy.length>0?"Salidas: "+fmt(totalGastosHoy)+" ("+gastosLine+")":"Sin salidas de caja",
+            "Debería haber: "+fmt(debeHaber),
+            "Contado: "+(contado!==null?fmt(contado):"sin contar"),
+            cuadreStr,
+            "",
+            "📦 *Inventario crítico:*",
+            sabsLine,
+            "",
+            "🛒 *Falta comprar:*",
+            comprLine,
+            notasTurno?"\n📝 Notas: "+notasTurno:"",
+          ].filter(Boolean).join("\n");
+          const numero = (waNumero||"").replace(/[^0-9]/g,"");
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          const base = numero ? ("https://wa.me/52"+numero) : (isMobile?"whatsapp://send":"https://wa.me");
+          const url = base+"?text="+encodeURIComponent(msg);
+          window.open(url,"_blank");
+        };
+        return (
+          <button className="btn" onClick={enviarWA}
+            style={{width:"100%",background:"#22C55E",color:"white",borderRadius:14,padding:16,fontSize:15,fontWeight:900,letterSpacing:".04em",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:10,boxShadow:"0 4px 16px rgba(34,197,94,.4)"}}>
+            <span style={{fontSize:22}}>📲</span>
+            <div style={{textAlign:"left"}}>
+              <div>Enviar resumen por WhatsApp</div>
+              <div style={{fontSize:11,fontWeight:600,opacity:.8,textTransform:"none"}}>
+                {waNumero ? ("→ +52 "+waNumero) : "Configura tu número en ⚙️"}
+              </div>
+            </div>
+          </button>
+        );
+      })()}
 
       {/* ─── SECCIÓN DEL JEFE: verificar transferencias y terminal ─── */}
       <div style={{background:"linear-gradient(135deg,rgba(45,79,184,.4),rgba(45,79,184,.15))",border:"2px solid rgba(147,180,255,.35)",borderRadius:14,padding:14,marginBottom:10,marginTop:10}}>
@@ -2622,7 +2665,7 @@ function CierreTab({ pedidos, fondoCaja, cierres, cierresSemana, gastosCaja: gas
 }
 
 // ─── CONFIG TAB ───────────────────────────────────────────────────────────────
-function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setCajeros, cajeroActivo, setCajeroActivo, preciosLibres, setPreciosLibres, ventasLibres, setVentasLibres, toppingsConfig, setToppingsConfig, saboresNat, setSaboresNat, saboresAgua, setSaboresAgua, pinJefe, setPinJefe, btn, requirePin, showSaved }) {
+function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setCajeros, cajeroActivo, setCajeroActivo, preciosLibres, setPreciosLibres, ventasLibres, setVentasLibres, toppingsConfig, setToppingsConfig, saboresNat, setSaboresNat, saboresAgua, setSaboresAgua, waNumero, setWaNumero, pinJefe, setPinJefe, btn, requirePin, showSaved }) {
   const [editProd, setEditProd] = useState(null);
   const [formProd, setFormProd] = useState({ nombre:"", precio:"", categoria:"natural", emoji:"🍧" });
   const [nuevoCajero, setNuevoCajero] = useState("");
@@ -2957,7 +3000,35 @@ function ConfigTab({ productos, setProductos, pedidos, setPedidos, cajeros, setC
         </div>
       </div>
 
-      {/* PIN del jefe */}
+      {/* WHATSAPP BACKUP */}
+      <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+          <span style={{fontSize:20}}>📲</span>
+          <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",textTransform:"uppercase"}}>Número de WhatsApp para el resumen</div>
+        </div>
+        <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>Al cerrar turno el resumen irá directo a este número. Solo los 10 dígitos, sin +52.</div>
+        <div style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,.05)",borderRadius:12,border:"1.5px solid rgba(34,197,94,.3)",padding:"4px 14px",marginBottom:8}}>
+          <span style={{color:"rgba(255,255,255,.4)",fontSize:14,fontWeight:700,flexShrink:0}}>+52</span>
+          <input type="tel" placeholder="6141234567" value={waNumero||""} maxLength={10}
+            onChange={e=>setWaNumero&&setWaNumero(e.target.value.replace(/[^0-9]/g,"").slice(0,10))}
+            style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'Archivo Black',sans-serif",fontSize:18,color:"white",padding:"10px 0",letterSpacing:".08em"}}/>
+          {waNumero && waNumero.length === 10 && (
+            <span style={{color:"#4ADE80",fontSize:16,flexShrink:0}}>✓</span>
+          )}
+        </div>
+        {waNumero && waNumero.length === 10 && (
+          <div className="serif-it" style={{fontSize:13,color:"#4ADE80"}}>
+            ✓ El resumen irá a +52 {waNumero} al cerrar turno
+          </div>
+        )}
+        {waNumero && waNumero.length > 0 && waNumero.length < 10 && (
+          <div className="serif-it" style={{fontSize:13,color:ORANGE}}>
+            Falta completar el número (10 dígitos)
+          </div>
+        )}
+      </div>
+
+      {/* PIN DEL JEFE */}
       <div style={{background:"rgba(0,0,0,.22)",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={{fontSize:11,fontWeight:800,letterSpacing:".1em",color:"rgba(255,255,255,.5)",marginBottom:8,textTransform:"uppercase"}}>🔐 Cambiar PIN del jefe</div>
         <div className="serif-it" style={{fontSize:14,color:"rgba(255,255,255,.5)",marginBottom:10}}>El PIN protege configuración, cortesías y acciones sensibles. PIN actual: ••••</div>
