@@ -3310,7 +3310,18 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig })
                 ].filter(p => p.categoria === cat);
                 const togS = (s) => {
                   btn("check");
-                  const next = (it.sabores||[]).includes(s) ? (it.sabores||[]).filter(x=>x!==s) : [...(it.sabores||[]),s];
+                  const cur = it.sabores || [];
+                  let next;
+                  if (cur.includes(s)) {
+                    next = cur.filter(x => x !== s);
+                  } else {
+                    const cat2 = it.producto?.categoria || "natural";
+                    const isAgua2 = cat2 === "agua";
+                    const hayAgua2 = cur.some(x => SABORES_AGUA.includes(x));
+                    const hayNat2 = cur.some(x => SABORES_NATURALES.includes(x));
+                    if ((isAgua2 && hayNat2) || (!isAgua2 && hayAgua2)) return;
+                    next = [...cur, s];
+                  }
                   setItems(items.map((x,i) => i===idx ? {...x, sabores:next} : x));
                 };
                 const togTop = (k) => {
@@ -3546,7 +3557,22 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
                       <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Sabores</div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,marginBottom:8}}>
                         {sabsDisp.map(s => (
-                          <button key={s} className="btn" onClick={()=>{ btn("check"); const cur=it.sabores||[]; const next=cur.includes(s)?cur.filter(x=>x!==s):[...cur,s]; setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,sabores:next}:x)); }}
+                          <button key={s} className="btn" onClick={()=>{
+                              btn("check");
+                              const cur = it.sabores||[];
+                              let next;
+                              if (cur.includes(s)) {
+                                next = cur.filter(x => x !== s);
+                              } else {
+                                const cat2 = it.producto?.categoria || "natural";
+                                const isAgua2 = cat2 === "agua";
+                                const hayAgua2 = cur.some(x => SABORES_AGUA.includes(x));
+                                const hayNat2 = cur.some(x => SABORES_NATURALES.includes(x));
+                                if ((isAgua2 && hayNat2) || (!isAgua2 && hayAgua2)) return;
+                                next = [...cur, s];
+                              }
+                              setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,sabores:next}:x));
+                            }}
                             style={{padding:"7px 3px",borderRadius:8,fontSize:11,fontWeight:700,textAlign:"center",border:"2px solid",
                               borderColor:(it.sabores||[]).includes(s)?ORANGE:CREMA_DARK,
                               background:(it.sabores||[]).includes(s)?"rgba(230,104,50,.12)":"white",
