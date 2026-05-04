@@ -453,7 +453,7 @@ export default function App() {
           </div>
         )}
         {tab === "reportes" && <div style={{padding:"20px"}}><ReportesTab pedidos={pedidos} actualizarPedido={actualizarPedido} vasosExtra={vasosExtra} gastosCaja={gastosCaja} cierresSemana={cierresSemana} btn={btn} requirePin={requirePin}/></div>}
-        {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido} toppingsConfig={toppingsConfig}/></div>}
+        {tab === "historial" && <div style={{background:CREMA,color:TEXT_DARK,minHeight:"calc(100vh - 90px)",padding:"20px"}} className="cream-section"><HistorialTab pedidos={pedidos} btn={btn} actualizarPedido={actualizarPedido} toppingsConfig={toppingsConfig} cajeroActivo={cajeroActivo} requirePin={requirePin}/></div>}
         {tab === "gastos"   && <div style={{padding:"20px"}}><GastosTab gastosCaja={gastosCaja} agregarGasto={agregarGasto} requirePin={requirePin} btn={btn} showSaved={showSaved}/></div>}
         {tab === "cierre"   && <div style={{padding:"20px"}}><CierreTab pedidos={pedidos} fondoCaja={fondoCaja} cierres={cierres} cierresSemana={cierresSemana} gastosCaja={gastosCaja} agregarCierre={agregarCierre} agregarCierreSemana={agregarCierreSemana} cajeroActivo={cajeroActivo} btn={btn} showSaved={showSaved} inventariosGuardados={inventariosGuardados} setInventariosGuardados={setInventariosGuardados} pinJefe={pinJefe} saboresNat={saboresNat} saboresAgua={saboresAgua} requirePin={requirePin} waNumero={waNumero}/></div>}
         {tab === "config"   && <div style={{padding:"20px"}}><ConfigTab productos={productos} setProductos={setProductos} pedidos={pedidos} setPedidos={setPedidos} cajeros={cajeros} setCajeros={setCajeros} cajeroActivo={cajeroActivo} setCajeroActivo={setCajeroActivo} preciosLibres={preciosLibres} setPreciosLibres={setPreciosLibres} ventasLibres={ventasLibres} setVentasLibres={setVentasLibres} toppingsConfig={toppingsConfig} setToppingsConfig={setToppingsConfig} saboresNat={saboresNat} setSaboresNat={setSaboresNat} saboresAgua={saboresAgua} setSaboresAgua={setSaboresAgua} waNumero={waNumero} setWaNumero={setWaNumero} pinJefe={pinJefe} setPinJefe={setPinJefe} btn={btn} requirePin={requirePin} showSaved={showSaved}/></div>}
@@ -3417,7 +3417,7 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig })
 }
 
 // ─── HISTORIAL TAB ────────────────────────────────────────────────────────────
-function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
+function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig, cajeroActivo, requirePin }) {
   const entregados = pedidos.filter(p => p.entregado).sort((a,b) => b.fecha.localeCompare(a.fecha));
 
   // Agrupar por fecha local del dispositivo
@@ -3451,9 +3451,49 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
     }));
     const [editItemIdx, setEditItemIdx] = useState(null);
 
-    const guardarItems = () => {
+    const [esperandoPinTamano, setEsperandoPinTamano] = useState(false);
+    const [itemPendienteTamano, setItemPendienteTamano] = useState(null); // {idx, producto}
+
+    const cambiarTamanoConPin = (idx, pr) => {
+      // Solicitar PIN del jefe para cambiar tamaño
+      requirePin && requirePin("Cambiar tamaño — solo el jefe puede hacer esto", () => {
+        setItemsEdit(prev => prev.map((x,j) => j===idx ? {...x, producto:pr} : x));
+      });
+    };
+
+    const guardarItems = (cajeroNombre) => {
       btn("success");
-      actualizarPedido(p.id, { items: itemsEdit, total: calcPedidoTotal(itemsEdit, p.esCortes) });
+      // Registrar auditoría de la edición
+      const ahora = new Date().toISOString();
+      const editLog = p.editLog || [];
+      const cambios = itemsEdit.map((it, i) => {
+        const orig = p.items[i];
+        if (!orig) return null;
+        const sabsCambiaron = JSON.stringify(it.sabores) !== JSON.stringify(orig.sabores||[]);
+        const tamCambio = it.producto?.id !== orig.producto?.id;
+        const topCambiaron = JSON.stringify(it.toppings) !== JSON.stringify(orig.toppings||{});
+        if (!sabsCambiaron && !tamCambio && !topCambiaron) return null;
+        return {
+          raspa: i+1,
+          saboresAntes: (orig.sabores||[]).join(", ") || "sin sabor",
+          saboresDespues: (it.sabores||[]).join(", ") || "sin sabor",
+          tamanoAntes: orig.producto?.nombre || "",
+          tamanoDespues: it.producto?.nombre || "",
+        };
+      }).filter(Boolean);
+
+      if (cambios.length > 0) {
+        editLog.push({
+          fecha: ahora,
+          cajero: cajeroNombre,
+          cambios,
+        });
+      }
+      actualizarPedido(p.id, {
+        items: itemsEdit,
+        total: calcPedidoTotal(itemsEdit, p.esCortes),
+        editLog,
+      });
       setEditandoItems(false);
       setEditItemIdx(null);
     };
@@ -3612,15 +3652,22 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
                           );
                         })}
                       </div>
-                      <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Tamaño</div>
+                      <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Tamaño — 🔐 requiere PIN del jefe para cambiar</div>
                       <div style={{display:"grid",gridTemplateColumns:`repeat(${prodsFilt.length},1fr)`,gap:4,marginBottom:10}}>
                         {prodsFilt.map(pr => (
-                          <button key={pr.id} className="btn" onClick={()=>{ btn(); setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,producto:pr}:x)); }}
+                          <button key={pr.id} className="btn" onClick={()=>{
+                            if (it.producto?.id === pr.id) return; // ya está seleccionado
+                            btn();
+                            cambiarTamanoConPin(idx, pr);
+                          }}
                             style={{padding:"8px 4px",borderRadius:8,fontWeight:800,border:"2px solid",textAlign:"center",
                               borderColor:it.producto?.id===pr.id?ORANGE:CREMA_DARK,
-                              background:it.producto?.id===pr.id?"rgba(230,104,50,.12)":"white",color:TEXT_DARK}}>
+                              background:it.producto?.id===pr.id?"rgba(230,104,50,.12)":"white",
+                              color:it.producto?.id===pr.id?ORANGE:TEXT_MUTED,
+                              opacity:it.producto?.id===pr.id?1:0.7}}>
                             <div className="display" style={{fontSize:13}}>{pr.nombre.split(" ").pop()}</div>
-                            <div className="display" style={{fontSize:15,color:ORANGE}}>${pr.precio}</div>
+                            <div className="display" style={{fontSize:15,color:it.producto?.id===pr.id?ORANGE:TEXT_MUTED}}>${pr.precio}</div>
+                            {it.producto?.id!==pr.id && <div style={{fontSize:9,color:TEXT_MUTED,marginTop:1}}>🔐 PIN</div>}
                           </button>
                         ))}
                       </div>
@@ -3634,10 +3681,35 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
                 </div>
               );
             })}
-            <button className="btn" onClick={guardarItems}
+            <button className="btn" onClick={()=>guardarItems(cajeroActivo)}
               style={{width:"100%",background:ORANGE,color:"white",borderRadius:10,padding:"11px",fontWeight:900,fontSize:13,marginTop:4,letterSpacing:".04em",textTransform:"uppercase"}}>
               ✓ Guardar cambios
             </button>
+          </div>
+        )}
+
+        {/* Log de ediciones — solo visible si hubo cambios */}
+        {p.editLog && p.editLog.length > 0 && (
+          <div style={{marginTop:8,background:"rgba(234,91,29,.06)",borderRadius:10,padding:"8px 12px",border:"1px solid rgba(234,91,29,.2)"}}>
+            <div style={{fontSize:10,fontWeight:800,color:ORANGE,marginBottom:5,textTransform:"uppercase",letterSpacing:".08em"}}>📋 Historial de ediciones</div>
+            {p.editLog.map((log, li) => (
+              <div key={li} style={{marginBottom:li<p.editLog.length-1?6:0}}>
+                <div style={{fontSize:11,color:TEXT_MUTED,fontWeight:700}}>
+                  {fmtDate(log.fecha)} {fmtTime(log.fecha)} · {log.cajero}
+                </div>
+                {log.cambios.map((c, ci) => (
+                  <div key={ci} className="serif-it" style={{fontSize:12,color:TEXT_DARK,marginTop:1,paddingLeft:8}}>
+                    Raspa #{c.raspa}:
+                    {c.saboresAntes !== c.saboresDespues && (
+                      <span> sabores <span style={{color:"#DC2626"}}>{c.saboresAntes}</span> → <span style={{color:"#16A34A"}}>{c.saboresDespues}</span></span>
+                    )}
+                    {c.tamanoAntes !== c.tamanoDespues && (
+                      <span style={{color:ORANGE}}> · tamaño {c.tamanoAntes} → {c.tamanoDespues} 🔐</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
       </div>
