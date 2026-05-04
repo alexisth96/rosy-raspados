@@ -3273,8 +3273,7 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig })
         {items.map((it, idx) => {
           const isEsp = it.tipo === "especial";
           return (
-            <div key={idx} style={{background:editIdx===idx?"rgba(230,104,50,.08)":"white",border:`2px solid ${editIdx===idx?ORANGE:CREMA_DARK}`,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer"}}
-              onClick={()=>{ if(!isEsp){ btn(); setEditIdx(idx===editIdx?null:idx); } }}>
+            <div key={idx} style={{background:editIdx===idx?"rgba(230,104,50,.06)":"white",border:`2px solid ${editIdx===idx?ORANGE:CREMA_DARK}`,borderRadius:12,padding:"12px 14px",marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
                 <div style={{flex:1}}>
                   {isEsp ? (
@@ -3293,9 +3292,14 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig })
                     </>
                   )}
                 </div>
-                <div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                   <div className="display" style={{fontSize:18,color:ORANGE}}>{fmt(calcItemTotal(it))}</div>
-                  {!isEsp && <div className="serif-it" style={{fontSize:11,color:TEXT_MUTED,textAlign:"right",marginTop:2}}>toca para editar</div>}
+                  {!isEsp && (
+                    <button className="btn" onClick={()=>{ btn(); setEditIdx(editIdx===idx?null:idx); }}
+                      style={{fontSize:11,fontWeight:700,color:editIdx===idx?ORANGE:TEXT_MUTED,background:editIdx===idx?"rgba(230,104,50,.1)":CREMA_DARK,borderRadius:7,padding:"4px 10px",border:editIdx===idx?`1px solid ${ORANGE}`:"none"}}>
+                      {editIdx===idx?"✕ cerrar":"✏️ editar"}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -3329,8 +3333,8 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig })
                   setItems(items.map((x,i) => i===idx ? {...x, toppings:{...(x.toppings||{}), [k]:!(x.toppings||{})[k]}} : x));
                 };
                 return (
-                  <div style={{marginTop:12,paddingTop:10,borderTop:`1px solid ${CREMA_DARK}`}}>
-                    <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:6,textTransform:"uppercase"}}>Sabores</div>
+                  <div style={{marginTop:12,paddingTop:10,borderTop:`1px solid ${CREMA_DARK}`}} onClick={e=>e.stopPropagation()}>
+                    <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:6,textTransform:"uppercase"}}>Sabores — toca para agregar o quitar</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:10}}>
                       {sabsDisp.map(s => (
                         <button key={s} className="btn" onClick={()=>togS(s)}
@@ -3355,7 +3359,7 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig })
                       ))}
                     </div>
                     <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:6,textTransform:"uppercase"}}>Tamaño</div>
-                    <div style={{display:"grid",gridTemplateColumns:`repeat(${prodsFiltrados.length},1fr)`,gap:5}}>
+                    <div style={{display:"grid",gridTemplateColumns:`repeat(${prodsFiltrados.length},1fr)`,gap:5,marginBottom:12}}>
                       {prodsFiltrados.map(p => (
                         <button key={p.id} className="btn" onClick={()=>{btn();setItems(items.map((x,i) => i===idx?{...x,producto:p}:x));}}
                           style={{padding:"10px 4px",borderRadius:8,fontWeight:800,border:"2px solid",textAlign:"center",
@@ -3366,6 +3370,11 @@ function EditarPedidoColaModal({ pedido, onSave, onClose, btn, toppingsConfig })
                         </button>
                       ))}
                     </div>
+                    {/* Botón confirmar esta raspa */}
+                    <button className="btn" onClick={()=>{ btn("success"); setEditIdx(null); }}
+                      style={{width:"100%",background:ORANGE,color:"white",borderRadius:10,padding:"11px",fontWeight:900,fontSize:13,letterSpacing:".04em",textTransform:"uppercase"}}>
+                      ✓ Confirmar sabores de raspa #{idx+1}
+                    </button>
                   </div>
                 );
               })()}
@@ -3528,7 +3537,7 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
         {/* Edición de items */}
         {editandoItems && (
           <div style={{marginTop:8,background:CREMA,borderRadius:12,padding:10}}>
-            <div style={{fontSize:11,fontWeight:800,color:TEXT_MUTED,marginBottom:8,textTransform:"uppercase",letterSpacing:".08em"}}>Editar raspas — toca una para modificarla</div>
+            <div style={{fontSize:11,fontWeight:800,color:TEXT_MUTED,marginBottom:8,textTransform:"uppercase",letterSpacing:".08em"}}>Editar raspas — toca ✏️ para modificar cada una</div>
             {itemsEdit.map((it, idx) => {
               const isEsp = it.tipo === "especial";
               const isOpen = editItemIdx === idx;
@@ -3536,8 +3545,7 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
               const sabsDisp = cat === "agua" ? SABORES_AGUA : SABORES_NATURALES;
               const prodsFilt = [{id:"nat_ch",nombre:"Natural Chico",precio:65,categoria:"natural"},{id:"nat_gr",nombre:"Natural Grande",precio:80,categoria:"natural"},{id:"agua_ch",nombre:"Agua Chico",precio:25,categoria:"agua"},{id:"agua_gr",nombre:"Agua Grande",precio:35,categoria:"agua"}].filter(pr=>pr.categoria===cat);
               return (
-                <div key={idx} style={{background:"white",borderRadius:10,padding:"10px 12px",marginBottom:6,border:`2px solid ${isOpen?ORANGE:CREMA_DARK}`,cursor:isEsp?"default":"pointer"}}
-                  onClick={()=>{ if(!isEsp) setEditItemIdx(isOpen?null:idx); }}>
+                <div key={idx} style={{background:"white",borderRadius:10,padding:"10px 12px",marginBottom:6,border:`2px solid ${isOpen?ORANGE:CREMA_DARK}`}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
                     <div style={{flex:1,minWidth:0}}>
                       {isEsp ? (
@@ -3550,11 +3558,19 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
                         </>
                       )}
                     </div>
-                    <div className="display" style={{fontSize:16,color:ORANGE,flexShrink:0}}>{fmt(calcItemTotal(it))}</div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                      <div className="display" style={{fontSize:16,color:ORANGE,flexShrink:0}}>{fmt(calcItemTotal(it))}</div>
+                      {!isEsp && (
+                        <button className="btn" onClick={()=>{ btn(); setEditItemIdx(isOpen?null:idx); }}
+                          style={{fontSize:11,fontWeight:700,color:isOpen?ORANGE:TEXT_MUTED,background:isOpen?"rgba(230,104,50,.1)":CREMA_DARK,borderRadius:7,padding:"3px 9px",border:isOpen?`1px solid ${ORANGE}`:"none"}}>
+                          {isOpen?"✕ cerrar":"✏️ editar"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {isOpen && !isEsp && (
                     <div style={{marginTop:10,paddingTop:8,borderTop:`1px solid ${CREMA_DARK}`}} onClick={e=>e.stopPropagation()}>
-                      <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Sabores</div>
+                      <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Sabores — toca para agregar o quitar</div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,marginBottom:8}}>
                         {sabsDisp.map(s => (
                           <button key={s} className="btn" onClick={()=>{
@@ -3597,7 +3613,7 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
                         })}
                       </div>
                       <div style={{fontSize:10,fontWeight:700,color:TEXT_MUTED,marginBottom:5,textTransform:"uppercase"}}>Tamaño</div>
-                      <div style={{display:"grid",gridTemplateColumns:`repeat(${prodsFilt.length},1fr)`,gap:4}}>
+                      <div style={{display:"grid",gridTemplateColumns:`repeat(${prodsFilt.length},1fr)`,gap:4,marginBottom:10}}>
                         {prodsFilt.map(pr => (
                           <button key={pr.id} className="btn" onClick={()=>{ btn(); setItemsEdit(itemsEdit.map((x,j)=>j===idx?{...x,producto:pr}:x)); }}
                             style={{padding:"8px 4px",borderRadius:8,fontWeight:800,border:"2px solid",textAlign:"center",
@@ -3608,6 +3624,11 @@ function HistorialTab({ pedidos, btn, actualizarPedido, toppingsConfig }) {
                           </button>
                         ))}
                       </div>
+                      {/* Confirmar esta raspa */}
+                      <button className="btn" onClick={()=>{ btn("success"); setEditItemIdx(null); }}
+                        style={{width:"100%",background:ORANGE,color:"white",borderRadius:10,padding:"10px",fontWeight:900,fontSize:12,letterSpacing:".04em",textTransform:"uppercase"}}>
+                        ✓ Confirmar sabores de raspa #{idx+1}
+                      </button>
                     </div>
                   )}
                 </div>
